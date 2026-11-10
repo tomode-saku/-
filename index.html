@@ -2151,10 +2151,18 @@ const SEESAW = {
       opts:[[0.22,'大'],[0.17,'ふつう'],[0.12,'小']], def:0.17 },
     { key:'wait', label:'つぎのボールまで',
       opts:[[5,'5秒'],[4,'4秒'],[3,'3秒'],[2,'2秒']], def:4 },
+    /* 出すものは それぞれ「なし／すこし／ふつう／おおい」。なしに すれば 練習に しぼれる
+       （ボール なし＋とげとげ ＝ とばす れんしゅう、ボール なし＋ばくだん ＝ とどめる れんしゅう）。
+       ぜんぶ なしの ときは ボールを ふつうで 出す */
+    { key:'balls', label:'かごに いれる ボール', quick:true,
+      opts:[[0,'なし'],[1,'すこし'],[2,'ふつう'],[3,'おおい']], def:2 },
     { key:'preview', type:'toggle', quick:true, label:'つぎの ボールの よこく',
       hint:'つぎに 落ちてくる いろを 先に 見せます。見てから しゃがんだまま 待つ子が いたので ふだんは 切っておきます。切ると、出てから 見て うごく 練習になります', def:false },
-    { key:'bomb', type:'toggle', quick:true, label:'ばくだんボールを出す',
-      hint:'どちらのかごにも入れてはいけません。シーソーの上でとめると処理できます', def:true },
+    /* ばくだん：どちらの かごにも 入れては いけない。シーソーの 上で とめると かいじょ。
+       すこし＝2ふくろに 1こ・ふつう＝1ふくろに 1こ（ボール ふつうで 約20%）・おおい＝1ふくろに 2こ。
+       もとは オンオフ（bomb: true/false）だったので、古い 設定ファイルの bomb は bombsOf() で 読みかえる */
+    { key:'bombs', label:'ばくだんボール', quick:true,
+      opts:[[0,'なし'],[1,'すこし'],[2,'ふつう'],[3,'おおい']], def:2 },
     { key:'holdSec', label:'ばくだんをとめる時間', quick:true,
       opts:[[2,'2秒'],[3,'3秒'],[4,'4秒'],[6,'6秒']], def:3 },
     /* とげとげボール：じぶんの いろの かべ（あお＝左・あか＝右）に とばすと はじけて +1。
@@ -2172,11 +2180,11 @@ const SEESAW = {
   ],
   presets: {
     やさしい:   { desc:'大きいボール・大きいかご・ばくだんなし',
-      v:{maxAngle:35, speed:6, gain:1.1, ballR:0.058, fric:1.6, basket:0.22, wait:5, preview:false, bomb:false, holdSec:2, toge:0, wallTgt:0} },
+      v:{maxAngle:35, speed:6, gain:1.1, ballR:0.058, fric:1.6, basket:0.22, wait:5, preview:false, balls:2, bombs:0, holdSec:2, toge:0, wallTgt:0} },
     ふつう:     { desc:'標準。ばくだんは3秒でとめる',
-      v:{maxAngle:25, speed:6, gain:1.1, ballR:0.044, fric:1.6, basket:0.17, wait:4, preview:false, bomb:true, holdSec:3, wallTgt:0} },
+      v:{maxAngle:25, speed:6, gain:1.1, ballR:0.044, fric:1.6, basket:0.17, wait:4, preview:false, balls:2, bombs:2, holdSec:3, wallTgt:0} },
     むずかしい: { desc:'小さいボール・よく転がる・ばくだん4秒',
-      v:{maxAngle:15, speed:10, gain:1.7, ballR:0.032, fric:0.7, basket:0.12, wait:3, preview:false, bomb:true, holdSec:4, wallTgt:0} },
+      v:{maxAngle:15, speed:10, gain:1.7, ballR:0.032, fric:0.7, basket:0.12, wait:3, preview:false, balls:2, bombs:2, holdSec:4, wallTgt:0} },
   },
 
   /* ---------------- 画面のかたち ---------------- */
@@ -2207,11 +2215,11 @@ const SEESAW = {
       dev:{A:0, B:0}, head:{A:null, B:null}, up:{A:0, B:0},
       ball:null, next:null, wait:0, phase:'ready',
       flash:null, combo:0, run:0, last:null, lastBomb:true, bag:[], tick:-1,   // lastBomb:true＝1こめは ばくだんに しない
-      lastToge:true, togePool:null, togeSkip:false,                            // lastToge:true＝1こめは とげとげに しない
+      lastToge:true, togePool:null, togeSkip:false, bombSkip:false,                           // lastToge:true＝1こめは とげとげに しない
       // 2人ぶんの記録（勝敗ではなく「そろえた数」を数える）
       okA:0, okB:0, defused:0, wrong:0, dropped:0, bombFail:0, best:0,
       // とげとげ：かべに とどいた／まとに あたった／とどかなかった（かご・ゆか・しぼんだ。しっぱいには 数えない）
-      togeOk:0, togeTgt:0, togeMiss:0,
+      togeOk:0, togeTgt:0, togeMiss:0, togeBy:{A:0, B:0},
       wallPop:{A:0, B:0}, fx:[],
       // かごに たまって見える ボールの数と、入った瞬間の はずみ（見た目だけ。判定には使わない）
       stack:{A:0, B:0}, pop:{A:0, B:0},
@@ -2256,15 +2264,26 @@ const SEESAW = {
      数は「すこし」＝2ふくろに 1こ・「ふつう」＝1ふくろに 1こ・「おおい」＝1ふくろに 2こ（あおと あか 1こずつ）。
      とげとげの 色も あお・あかを 交互に ならす（行き先の 向きが かたよらないように）。
      同じ色の 2連続まで には とげとげも 数える。とげとげは 連続しない・1こめは とげとげに しない */
+  /* 「かごに いれる ボール」の 数（1ふくろ あたり）：すこし＝あお1・あか1／ふつう＝2・2／おおい＝3・3 */
+  BALLS: [[], ['A','B'], ['A','A','B','B'], ['A','A','A','B','B','B']],
+  /* ばくだんの 段（0〜3）。古い 設定ファイルの bomb（true/false）が のこっていたら 読みかえて 消す */
+  bombsOf(s){
+    if(typeof s.bomb === 'boolean'){ if(!s.bomb) s.bombs = 0; delete s.bomb; }
+    return s.bombs ?? 2;
+  },
   pickNext(E){
     const st = this.st;
-    const bombOn = E ? E.s.bomb : false;
+    const bombOn = E ? this.bombsOf(E.s) : 0;
     const toge   = E ? (E.s.toge || 0) : 0;
+    let balls    = E ? (E.s.balls ?? 2) : 2;
+    if(!balls && !bombOn && !toge) balls = 2;    // ぜんぶ なしでは 何も 落ちてこないので、ボールを ふつうで 出す
     for(;;){
-      if(!st.bag || !st.bag.length) st.bag = this.fillBag(bombOn, toge);
+      // 「すこし」は 2ふくろに 1こなので、ほかが なしだと からの ふくろが できる。そのときは もう1ふくろ
+      if(!st.bag || !st.bag.length){ st.bag = this.fillBag(bombOn, toge, balls); continue; }
       const k = st.bag.shift();
       if(k === 'bomb' && !bombOn) continue;     // とちゅうで ばくだんを 切ったときの のこりは すてる
       if(k[0] === 's' && !toge)  continue;      // とげとげも おなじ
+      if((k === 'A' || k === 'B') && !balls) continue;   // かごに いれる ボールも おなじ
       if(k === 'bomb'){ st.lastBomb = true; st.lastToge = false; return k; }
       const col = k[0] === 's' ? k[1] : k;
       st.run = (col === st.last) ? st.run + 1 : 1; st.last = col; st.lastBomb = false;
@@ -2278,26 +2297,31 @@ const SEESAW = {
     if(!st.togePool || !st.togePool.length) st.togePool = Math.random() < 0.5 ? ['sA','sB'] : ['sB','sA'];
     return st.togePool.shift();
   },
-  fillBag(bombOn, toge){
+  fillBag(bombOn, toge, balls = 2){
     const st = this.st;
-    const items = bombOn ? ['A','A','B','B','bomb'] : ['A','A','B','B'];
+    const items = this.BALLS[balls] ? this.BALLS[balls].slice() : ['A','A','B','B'];
+    if(bombOn >= 3){ items.push('bomb', 'bomb'); }
+    else if(bombOn === 2 || bombOn === true){ items.push('bomb'); }
+    else if(bombOn === 1){ st.bombSkip = !st.bombSkip; if(!st.bombSkip) items.push('bomb'); }
     if(toge >= 3){ items.push('sA', 'sB'); }
     else if(toge === 2){ items.push(this.togeColor()); }
     else if(toge === 1){ st.togeSkip = !st.togeSkip; if(!st.togeSkip) items.push(this.togeColor()); }
+    // ばくだんだけ・とげとげだけの ときは「連続しない」を 外す（あいだに はさむものが ない）
+    const free = { bomb: !balls && !toge, toge: !balls && !bombOn };
     let bag = items;
     for(let tries=0; tries<300; tries++){
       bag = items.slice();
       for(let i=bag.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [bag[i],bag[j]] = [bag[j],bag[i]]; }
-      if(this.bagOk(bag, st)) break;
+      if(this.bagOk(bag, st, free)) break;
     }
     return bag;
   },
-  bagOk(bag, st){
+  bagOk(bag, st, free = {}){
     let last = st.last, run = st.run, prevBomb = st.lastBomb, prevToge = st.lastToge;
     for(const k of bag){
-      if(k === 'bomb'){ if(prevBomb) return false; prevBomb = true; prevToge = false; continue; }
+      if(k === 'bomb'){ if(prevBomb && !free.bomb) return false; prevBomb = true; prevToge = false; continue; }
       const toge = k[0] === 's', col = toge ? k[1] : k;
-      if(toge && prevToge) return false;
+      if(toge && prevToge && !free.toge) return false;
       run = (col === last) ? run + 1 : 1; last = col; prevBomb = false; prevToge = toge;
       if(run > 2) return false;
     }
@@ -2486,18 +2510,30 @@ const SEESAW = {
         b.vx = rvx + vsx; b.vy = rvy + vsy;
       }
 
-      /* かごとの接触 */
+      /* かごとの接触。たての かべの てっぺんは 半円（平らだと ボールが ふちの 上に 乗って 止まってしまう） */
       for(const side of ['A','B']){
         const box = this.basketBox(g, side);
+        const cr = g.wall/2;
         const rects = [
-          [box.outerX, box.backTop, g.wall, box.y1 - box.backTop],
-          [box.innerX, box.y0, g.wall, box.y1 - box.y0],
+          [box.outerX, box.backTop + cr, g.wall, box.y1 - box.backTop - cr],
+          [box.innerX, box.y0 + cr, g.wall, box.y1 - box.y0 - cr],
           [box.x0, box.y1 - g.wall, box.x1 - box.x0, g.wall],
+          [box.outerX + cr, box.backTop + cr, 0, 0, cr],
+          [box.innerX + cr, box.y0 + cr, 0, 0, cr],
         ];
-        for(const [rx,ry,rw,rh] of rects){
+        for(const [rx,ry,rw,rh,rr=0] of rects){
           const cx2 = Math.max(rx, Math.min(b.x, rx+rw));
           const cy2 = Math.max(ry, Math.min(b.y, ry+rh));
           const ddx = b.x-cx2, ddy = b.y-cy2;
+          if(rr > 0){
+            const d = Math.hypot(ddx, ddy);
+            if(d >= b.r + rr || d === 0) continue;
+            const nx = ddx/d, ny = ddy/d;
+            b.x += nx*(b.r + rr - d); b.y += ny*(b.r + rr - d);
+            const vn = b.vx*nx + b.vy*ny;
+            if(vn < 0){ b.vx -= (1+rest)*vn*nx; b.vy -= (1+rest)*vn*ny; }
+            continue;     // まるい ところは 横の 速さを けずらない（ころがり おちるように）
+          }
           const d = Math.hypot(ddx, ddy);
           if(d >= b.r || d === 0) continue;
           const nx = ddx/d, ny = ddy/d;
@@ -2539,6 +2575,23 @@ const SEESAW = {
       /* 床・画面外 */
       if(b.y - b.r > g.groundY || b.x < -b.r*3 || b.x > E.W + b.r*3){ this.settle(E, null); return; }
     }
+
+    /* ほけん：板の 上 いがいで ほとんど 動かないまま 0.6秒 たったら、近くの かごの かべから はなれる むきへ そっと 押す
+       （かごの ふちの 上や すきまに はさまって ゲームが 止まらないように。板の 上で とどめるのは そのまま） */
+    if(!b.onBeam && Math.hypot(b.vx, b.vy) < E.H*0.05){
+      b.still = (b.still || 0) + dt;
+      if(b.still > 0.6){
+        let nx = null;
+        for(const side of ['A','B']){
+          const box = this.basketBox(g, side);
+          for(const x of [box.outerX + g.wall/2, box.innerX + g.wall/2])
+            if(nx === null || Math.abs(b.x - x) < Math.abs(b.x - nx)) nx = x;
+        }
+        const dir = Math.abs(b.x - nx) > 1 ? Math.sign(b.x - nx) : (Math.random() < 0.5 ? -1 : 1);
+        b.vx += dir * E.H * 0.25;
+        b.still = 0;
+      }
+    } else b.still = 0;
   },
 
   basketBox(g, side){
@@ -2569,7 +2622,7 @@ const SEESAW = {
   togeHit(E, side, b, wx){
     const st = this.st, g = this.geo(E);
     const onTgt = E.s.wallTgt > 0 && Math.abs(b.y - g.tgtY) < g.tgtR + b.r*0.5;
-    st.togeOk++; st.combo++; st.best = Math.max(st.best, st.combo);
+    st.togeOk++; st.togeBy[side]++; st.combo++; st.best = Math.max(st.best, st.combo);
     st.wallPop[side] = 0.5;
     E.award(side, 1, 'good', wx, b.y);
     if(onTgt){ st.togeTgt++; E.award(side, 1, 'bonus', wx, b.y + E.H*0.06); }
@@ -2670,28 +2723,40 @@ const SEESAW = {
     const all   = ok + fails;
     const rate  = all ? Math.round(ok/all*100) : 0;
 
+    // 「かごに いれる ボール」を なしに した 練習では、かごの 数や「ちがう色・おとした」は 出さない
+    const bombs = this.bombsOf(E.s), toge = E.s.toge > 0;
+    const ballsOn = (E.s.balls ?? 2) > 0 || (!bombs && !toge);
+
     let sub;
-    if(!all)                sub = 'ボールが 来ませんでした';
+    if(!all && !st.togeMiss) sub = 'ボールが 来ませんでした';
     else if(st.best >= 3)   sub = `いちばん つづいたのは ${st.best}かい れんぞく　／　せいこう率 ${rate}%`;
     else if(ok > 0)         sub = `せいこう率 ${rate}%　ふたりで 力を合わせました`;
     else                    sub = 'つぎは きっと そろえられます';
 
     // 内訳は「どんな間違え方をしたか」が分かる形にする（観察の手がかりになる）
-    const parts = [`ちがう色 ${st.wrong||0}`, `おとした ${st.dropped||0}`];
-    if(E.s.bomb) parts.push(`ばくだん ${st.bombFail||0}`);
+    const parts = ballsOn ? [`ちがう色 ${st.wrong||0}`, `おとした ${st.dropped||0}`] : [];
+    if(bombs) parts.push(`ばくだん ${st.bombFail||0}`);
+    const cards = ballsOn ? [
+      { label:'あおの かごへ', value: st.okA||0, detail:'そろえた かず' },
+      { label:'あかの かごへ', value: st.okB||0, detail:'そろえた かず' },
+    ] : toge ? [     // カードは 2まい ならぶので、とげとげは かべの 色で わける
+      { label:'あおの かべへ', value: (st.togeBy||{}).A||0, detail:'とげとげが とどいた かず' },
+      { label:'あかの かべへ', value: (st.togeBy||{}).B||0, detail:'とげとげが とどいた かず' },
+    ] : [            // ばくだんだけの 練習
+      { label:'ばくだん', value: st.defused||0, detail:'かいじょ した かず' },
+      { label:'いちばん つづいた', value: st.best||0, detail:'れんぞく' },
+    ];
     return {
       title: ok > 0 ? `ふたりで ${ok}こ そろえた！` : 'ふたりで ちょうせん しました',
       color: ok > 0 ? 'var(--gold)' : 'var(--ok)',
       sub,
-      cards: [
-        { label:'あおの かごへ', value: st.okA||0, detail:'そろえた かず' },
-        { label:'あかの かごへ', value: st.okB||0, detail:'そろえた かず' },
-      ],
+      cards,
       // とげとげは「なんこ とんで なんこ とどいたか」を 出す（いきおいよく 立てたかの 観察の 手がかり）
-      line: (E.s.toge > 0 ? `とげとげ かべに とどいた ${st.togeOk||0}／${(st.togeOk||0) + (st.togeMiss||0)}こ`
-                            + (E.s.wallTgt > 0 ? `（まと ${st.togeTgt||0}かい）` : '') + '　／　' : '')
-          + (E.s.bomb ? `ばくだん かいじょ ${st.defused||0}かい　／　` : '')
-          + `しっぱい ${fails}かい（${parts.join('　')}）`,
+      line: (toge ? `とげとげ かべに とどいた ${st.togeOk||0}／${(st.togeOk||0) + (st.togeMiss||0)}こ`
+                    + (E.s.wallTgt > 0 ? `（まと ${st.togeTgt||0}かい）` : '') : '')
+          + (toge && (bombs || parts.length) ? '　／　' : '')
+          + (bombs ? `ばくだん かいじょ ${st.defused||0}かい` : '')
+          + (parts.length ? (bombs ? '　／　' : '') + `しっぱい ${fails}かい（${parts.join('　')}）` : ''),
     };
   },
 

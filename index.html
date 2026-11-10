@@ -1599,10 +1599,20 @@ function banner(t, s, ms, solid){
   b.classList.toggle('solid', !!solid);
   if(ms) setTimeout(() => { if(b.innerHTML.includes(t)){ b.innerHTML = ''; b.classList.remove('solid'); } }, ms);
 }
+/* ゲームが自分の操作ボタンを右下に足せる（game.tools = [{label, run(E)}]）。押せるのはプレイ中だけ */
+function buildGameTools(){
+  document.querySelectorAll('#tools .gameTool').forEach(b => b.remove());
+  for(const t of (game && game.tools) || []){
+    const b = document.createElement('button');
+    b.className = 'gameTool'; b.textContent = t.label;
+    b.onclick = () => { if(G.mode === 'play' && !G.paused) t.run(E); };
+    $('tools').insertBefore(b, $('btnSwapNow'));
+  }
+}
 let runId = 0;   // カウントダウン中にやめた／やり直したら、古いカウントダウンを止めるための番号
 async function startGame(){
   const run = ++runId;
-  resetGame(); fitCanvas(); disarmQuit();
+  resetGame(); fitCanvas(); disarmQuit(); buildGameTools();
   show('game'); $('pause').classList.remove('on'); G.paused = false;
   cancelAnimationFrame(raf); prev = performance.now(); raf = requestAnimationFrame(loop);
   G.mode = 'count';
@@ -2054,14 +2064,56 @@ const SEESAW = {
     }
     return c;
   },
+  /* とげとげボール：チームの いろの 体に、銀の とげ 8本。体の はんけいは PXS_R（タイルは PXS 四方。とげが はみ出す ぶん 大きい）。
+     あたり判定は 体の 大きさ（ballR）のまま。とげは 見た目だけ */
+  PXS: 22, PXS_R: 7.2,
+  TOGE_TIP: ['#c8ccd6','#f2f4f8','#6e7380'],
+  togeIn(dx, dy, rb){
+    const d = Math.hypot(dx, dy);
+    if(d <= rb) return 1;                       // 体
+    const a = Math.atan2(dy, dx), w = 0.30;
+    for(let k=0;k<8;k++){
+      const da = Math.abs(((a - k*Math.PI/4 + Math.PI*3) % (Math.PI*2)) - Math.PI);
+      if(da < w && d <= rb + rb*0.62*(1 - da/w)) return 2;   // とげ
+    }
+    return 0;
+  },
+  mkSpiky(base, mid, dark, mark){
+    const N = this.PXS, rb = this.PXS_R, tip = this.TOGE_TIP;
+    const c = document.createElement('canvas'); c.width = c.height = N;
+    const g = c.getContext('2d');
+    const cc = (N-1)/2;
+    for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+      const dx = x-cc, dy = y-cc, k = this.togeIn(dx, dy, rb);
+      if(!k) continue;
+      const p = k === 1 ? [base, mid, dark] : tip;
+      const lit = (dx+dy) < -N*0.18, shd = (dx+dy) > N*0.22;
+      let edge = false;
+      for(const [ox,oy] of [[1,0],[-1,0],[0,1],[0,-1]]) if(!this.togeIn(dx+ox, dy+oy, rb)) edge = true;
+      g.fillStyle = edge ? p[2] : lit ? p[1] : shd ? p[2] : p[0];
+      g.fillRect(x,y,1,1);
+    }
+    g.fillStyle = mark;
+    g.fillRect(Math.round(cc-3), Math.round(cc-1), 2, 2);
+    g.fillRect(Math.round(cc+2), Math.round(cc+1), 2, 2);
+    return c;
+  },
   tiles(){
     if(this._tl) return this._tl;
     this._tl = {
       A:    this.mkBall('#4a7fe0','#9dc0ff','#22407e','#eaf2ff'),
       B:    this.mkBall('#d6423c','#ffa8a3','#7d2320','#ffecea'),
       bomb: this.mkBall('#55555f','#9a9aa6','#1d1d24','#ff5a52'),
+      sA:   this.mkSpiky('#4a7fe0','#9dc0ff','#22407e','#eaf2ff'),
+      sB:   this.mkSpiky('#d6423c','#ffa8a3','#7d2320','#ffecea'),
     };
     return this._tl;
+  },
+  /* ボールに あう タイルと、ボクセルで 描く 大きさ（ドットが そろうよう 整数倍） */
+  tileOf(b){ return this.tiles()[b.toge ? 's' + b.kind : b.kind]; },
+  pixSize(b, r){
+    if(b.toge) return Math.max(1, Math.round(r*2 / (this.PXS_R*2))) * this.PXS;
+    return Math.max(this.PXB, Math.round(r*2/this.PXB)*this.PXB);
   },
 
   preview(g, w, h){
@@ -2100,21 +2152,31 @@ const SEESAW = {
     { key:'wait', label:'つぎのボールまで',
       opts:[[5,'5秒'],[4,'4秒'],[3,'3秒'],[2,'2秒']], def:4 },
     { key:'preview', type:'toggle', quick:true, label:'つぎの ボールの よこく',
-      hint:'つぎに 落ちてくる いろを 先に 見せます。切ると、出てから 見て うごく 練習になります', def:true },
+      hint:'つぎに 落ちてくる いろを 先に 見せます。見てから しゃがんだまま 待つ子が いたので ふだんは 切っておきます。切ると、出てから 見て うごく 練習になります', def:false },
     { key:'bomb', type:'toggle', quick:true, label:'ばくだんボールを出す',
       hint:'どちらのかごにも入れてはいけません。シーソーの上でとめると処理できます', def:true },
     { key:'holdSec', label:'ばくだんをとめる時間', quick:true,
       opts:[[2,'2秒'],[3,'3秒'],[4,'4秒'],[6,'6秒']], def:3 },
+    /* とげとげボール：じぶんの いろの かべ（あお＝左・あか＝右）に とばすと はじけて +1。
+       かごに 入れる ボールとは ちがう「いきおいよく 立つ」課題。0 のときは かべを 置かない */
+    { key:'toge', label:'とげとげボール', quick:true,
+      opts:[[0,'なし'],[1,'すこし'],[2,'ふつう'],[3,'おおい']], def:0 },
+    { key:'fly', label:'とげとげの とびやすさ', quick:true,
+      opts:[[1.0,'ふつう'],[1.4,'よく とぶ'],[1.9,'すごく とぶ']], def:1.0 },
+    { key:'togeLife', label:'とげとげの のこる じかん',
+      opts:[[0,'ずっと'],[10,'ながい'],[6,'みじかい']], def:0 },
+    { key:'wallTgt', label:'とげとげの まと', quick:true,
+      opts:[[0,'なし'],[0.12,'大きい'],[0.08,'ふつう'],[0.05,'小さい']], def:0 },
     { key:'marker', type:'toggle', label:'頭の位置を表示する',
       hint:'認識できているか、どこが基準かを確認できます', def:true },
   ],
   presets: {
     やさしい:   { desc:'大きいボール・大きいかご・ばくだんなし',
-      v:{maxAngle:35, speed:6, gain:1.1, ballR:0.058, fric:1.6, basket:0.22, wait:5, preview:true, bomb:false, holdSec:2} },
+      v:{maxAngle:35, speed:6, gain:1.1, ballR:0.058, fric:1.6, basket:0.22, wait:5, preview:false, bomb:false, holdSec:2, toge:0, wallTgt:0} },
     ふつう:     { desc:'標準。ばくだんは3秒でとめる',
-      v:{maxAngle:25, speed:6, gain:1.1, ballR:0.044, fric:1.6, basket:0.17, wait:4, preview:true, bomb:true, holdSec:3} },
-    むずかしい: { desc:'小さいボール・よく転がる・ばくだん4秒・よこくなし',
-      v:{maxAngle:15, speed:10, gain:1.7, ballR:0.032, fric:0.7, basket:0.12, wait:3, preview:false, bomb:true, holdSec:4} },
+      v:{maxAngle:25, speed:6, gain:1.1, ballR:0.044, fric:1.6, basket:0.17, wait:4, preview:false, bomb:true, holdSec:3, wallTgt:0} },
+    むずかしい: { desc:'小さいボール・よく転がる・ばくだん4秒',
+      v:{maxAngle:15, speed:10, gain:1.7, ballR:0.032, fric:0.7, basket:0.12, wait:3, preview:false, bomb:true, holdSec:4, wallTgt:0} },
   },
 
   /* ---------------- 画面のかたち ---------------- */
@@ -2129,7 +2191,11 @@ const SEESAW = {
     const bw     = s.basket * W;
     const groundY= H * 0.955;
     const wall   = Math.max(7, W*0.008);
-    return { W, H, half, pivotX, pivotY, thick, r, maxA, rimY, bw, groundY, wall,
+    // 画面の はしの かべは、とげとげボールが 出る ときだけ 置く（なしのときは これまでどおり 外へ 落ちる）。
+    // まと（wallTgt）は とげとげ 専用。とげとげが なしなら まとも 出ない
+    const side   = s.toge > 0 ? wall*1.6 : 0;
+    const tgtR   = s.wallTgt * H, tgtY = H * 0.29;
+    return { W, H, half, pivotX, pivotY, thick, r, maxA, rimY, bw, groundY, wall, side, tgtR, tgtY,
              cxL: pivotX - half*0.95, cxR: pivotX + half*0.95 };
   },
 
@@ -2137,35 +2203,105 @@ const SEESAW = {
   reset(E){
     this.st = {
       angle:0, omega:0, target:0,
-      base:{A:null, B:null}, calib:0, samples:{A:[], B:[]},
-      dev:{A:0, B:0}, head:{A:null, B:null},
+      base:{A:null, B:null}, calib:0, samples:{A:[], B:[]}, late:{A:0, B:0},
+      dev:{A:0, B:0}, head:{A:null, B:null}, up:{A:0, B:0},
       ball:null, next:null, wait:0, phase:'ready',
-      flash:null, combo:0, run:0, last:null, lastBomb:true, tick:-1,
+      flash:null, combo:0, run:0, last:null, lastBomb:true, bag:[], tick:-1,   // lastBomb:true＝1こめは ばくだんに しない
+      lastToge:true, togePool:null, togeSkip:false,                            // lastToge:true＝1こめは とげとげに しない
       // 2人ぶんの記録（勝敗ではなく「そろえた数」を数える）
       okA:0, okB:0, defused:0, wrong:0, dropped:0, bombFail:0, best:0,
+      // とげとげ：かべに とどいた／まとに あたった／とどかなかった（かご・ゆか・しぼんだ。しっぱいには 数えない）
+      togeOk:0, togeTgt:0, togeMiss:0,
+      wallPop:{A:0, B:0}, fx:[],
+      // かごに たまって見える ボールの数と、入った瞬間の はずみ（見た目だけ。判定には使わない）
+      stack:{A:0, B:0}, pop:{A:0, B:0},
     };
     this.st.next = this.pickNext(E);
     this.st.wait = (E && E.s.wait) || 4;
   },
   start(E){
     if(!this.st) this.reset(E);
+    this.recalib();
+    this.st.started = true;
+  },
+  /* 基準を 取り直す（1秒「まっすぐ たってね」。そのあいだ ボールは 止まる） */
+  recalib(){
     this.st.calib = 1.0;
     this.st.samples = {A:[], B:[]};
     this.st.base = {A:null, B:null};
+    this.st.late = {A:0, B:0};
+    this.st.up = {A:0, B:0};
   },
+  /* 職員用。基準を 取るときに うごいてしまった子が いたら、ゲームの とちゅうで 押す */
+  tools: [
+    { label:'きじゅん とりなおし', run(){ SEESAW.recalib(); } },
+  ],
 
-  /* つぎに落とすもの。同じ色は3連続まで、ばくだんは連続しない */
+  /* 基準の高さ。平均だと 測っている あいだに かがんだ ぶん 低く出るので、
+     頭が 高いほうから 1/4 の ところを とる（y は 下ほど 大きい） */
+  baseOf(a){
+    if(!a.length) return null;
+    const v = a.slice().sort((p,c)=>p-c);
+    return v[Math.floor((v.length-1)*0.25)];
+  },
+  SHRINK: 0.4,    // とげとげが しぼんで 消えるまでの 秒数
+  UP_DEV: 0.35,   // 基準より 胴の長さ×これ だけ 高い まま…
+  UP_SEC: 1.5,    // …この秒数 つづいたら、基準が 低すぎたとみて いまの 高さに 取り直す
+
+  /* つぎに落とすもの。1こずつ くじを引くと 1分（10こ前後）でも 色が 7：3 くらいに かたよるので、
+     「あお2・あか2（・ばくだん1）」の ふくろを まぜて 順に出す（ふくろ方式）。
+     どの時点でも あおと あかの 差は 2こまで。ばくだんは 約20%（以前の 26%・連続なし と ほぼ同じ）。
+     ふくろの つなぎめも ふくめて、同じ色は 2連続まで（ばくだんを はさんでも 数える）・ばくだんは 連続しない */
+  /* とげとげボールは 'sA'（あお・左の かべ行き）／'sB'（あか・右の かべ行き）で ふくろに 入れる。
+     数は「すこし」＝2ふくろに 1こ・「ふつう」＝1ふくろに 1こ・「おおい」＝1ふくろに 2こ（あおと あか 1こずつ）。
+     とげとげの 色も あお・あかを 交互に ならす（行き先の 向きが かたよらないように）。
+     同じ色の 2連続まで には とげとげも 数える。とげとげは 連続しない・1こめは とげとげに しない */
   pickNext(E){
     const st = this.st;
     const bombOn = E ? E.s.bomb : false;
-    if(bombOn && st && !st.lastBomb && Math.random() < 0.26){
-      st.lastBomb = true; st.run = 0; st.last = null;
-      return 'bomb';
+    const toge   = E ? (E.s.toge || 0) : 0;
+    for(;;){
+      if(!st.bag || !st.bag.length) st.bag = this.fillBag(bombOn, toge);
+      const k = st.bag.shift();
+      if(k === 'bomb' && !bombOn) continue;     // とちゅうで ばくだんを 切ったときの のこりは すてる
+      if(k[0] === 's' && !toge)  continue;      // とげとげも おなじ
+      if(k === 'bomb'){ st.lastBomb = true; st.lastToge = false; return k; }
+      const col = k[0] === 's' ? k[1] : k;
+      st.run = (col === st.last) ? st.run + 1 : 1; st.last = col; st.lastBomb = false;
+      st.lastToge = k[0] === 's';
+      return k;
     }
-    let c = Math.random() < 0.5 ? 'A' : 'B';
-    if(st && st.run >= 2 && c === st.last) c = c === 'A' ? 'B' : 'A';
-    if(st){ st.run = (c === st.last) ? st.run + 1 : 1; st.last = c; st.lastBomb = false; }
-    return c;
+  },
+  /* とげとげの 色を 1こ もらう（あお・あかを まぜた 2こ組から 順に） */
+  togeColor(){
+    const st = this.st;
+    if(!st.togePool || !st.togePool.length) st.togePool = Math.random() < 0.5 ? ['sA','sB'] : ['sB','sA'];
+    return st.togePool.shift();
+  },
+  fillBag(bombOn, toge){
+    const st = this.st;
+    const items = bombOn ? ['A','A','B','B','bomb'] : ['A','A','B','B'];
+    if(toge >= 3){ items.push('sA', 'sB'); }
+    else if(toge === 2){ items.push(this.togeColor()); }
+    else if(toge === 1){ st.togeSkip = !st.togeSkip; if(!st.togeSkip) items.push(this.togeColor()); }
+    let bag = items;
+    for(let tries=0; tries<300; tries++){
+      bag = items.slice();
+      for(let i=bag.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [bag[i],bag[j]] = [bag[j],bag[i]]; }
+      if(this.bagOk(bag, st)) break;
+    }
+    return bag;
+  },
+  bagOk(bag, st){
+    let last = st.last, run = st.run, prevBomb = st.lastBomb, prevToge = st.lastToge;
+    for(const k of bag){
+      if(k === 'bomb'){ if(prevBomb) return false; prevBomb = true; prevToge = false; continue; }
+      const toge = k[0] === 's', col = toge ? k[1] : k;
+      if(toge && prevToge) return false;
+      run = (col === last) ? run + 1 : 1; last = col; prevBomb = false; prevToge = toge;
+      if(run > 2) return false;
+    }
+    return true;
   },
 
   /* ---------------- 頭の高さを読む ---------------- */
@@ -2194,18 +2330,36 @@ const SEESAW = {
     if(st.calib > 0){
       st.calib -= dt;
       if(st.calib <= 0){
-        for(const t of ['A','B']){
-          const a = st.samples[t];
-          st.base[t] = a.length ? a.reduce((p,c)=>p+c,0)/a.length : null;
+        for(const t of ['A','B']) st.base[t] = this.baseOf(st.samples[t]);
+      }
+    }
+    /* 基準の1秒に うつっていなかった子は、うつってから1秒 とどまったら 取り直す */
+    const h0 = E.poses.length ? this.readHeads(E) : {A:null, B:null};
+    if(st.calib <= 0){
+      for(const t of ['A','B']){
+        if(st.base[t] != null) continue;
+        if(h0[t]){
+          st.late[t] += dt; st.samples[t].push(h0[t].y);
+          if(st.late[t] >= 1.0) st.base[t] = this.baseOf(st.samples[t]);
+        }else{
+          st.late[t] = 0; st.samples[t] = [];
         }
       }
     }
     if(E.poses.length){
-      const h = this.readHeads(E);
+      const h = h0;
       st.head = h;
       if(st.calib > 0) for(const t of ['A','B']) if(h[t]) st.samples[t].push(h[t].y);
       for(const t of ['A','B']){
         if(h[t] && st.base[t] != null){
+          /* 基準を 取るときに うごいてしまって 低く 取れた子は、立っているだけで
+             「高い」と 出つづける。高いまま しばらく つづいたら 基準を なおす（ゲームは 止めない） */
+          const raw = (st.base[t] - h[t].y) / h[t].torso;
+          st.up[t] = raw > this.UP_DEV ? st.up[t] + dt : Math.max(0, st.up[t] - dt*2);
+          if(st.up[t] >= this.UP_SEC){
+            st.base[t] = h[t].y; st.up[t] = 0;
+            E.floatText(h[t].x*E.W, h[t].y*E.H - E.H*0.10, 'きじゅんを なおしたよ', '#f5c542');
+          }
           st.dev[t] = Math.max(-1.3, Math.min(1.3, (st.base[t] - h[t].y) / h[t].torso));
         }else{
           st.dev[t] *= Math.max(0, 1 - dt*2);
@@ -2221,15 +2375,23 @@ const SEESAW = {
     st.angle += (st.target - st.angle) * Math.min(1, s.speed * dt);
     st.omega = dt > 0 ? (st.angle - prev)/dt : 0;
 
+    /* 基準を 取っている あいだは ボールを 止めておく（とちゅうの 取り直しで ボールが 落ちないように） */
+    if(st.calib > 0){
+      if(st.flash){ st.flash.t -= dt; if(st.flash.t <= 0) st.flash = null; }
+      return;
+    }
+
     /* --- ボールの出現 --- */
     if(st.phase === 'ready'){
       st.wait -= dt;
       if(st.wait <= 0){
+        const nk = st.next, toge = nk[0] === 's';
         st.ball = {
-          kind: st.next,
+          kind: toge ? nk[1] : nk,          // とげとげも kind は 'A'／'B'（色＝行き先の 向き）
+          toge,
           x: g.pivotX + (Math.random()*2-1) * E.W*0.03,
           y: -g.r, vx:0, vy:0, r:g.r,
-          spin:0, spinV:0, hold:0, onBeam:false,
+          spin:0, spinV:0, hold:0, onBeam:false, age:0,
         };
         st.next = this.pickNext(E);
         st.phase = 'live';
@@ -2254,10 +2416,34 @@ const SEESAW = {
           if(b.onBeam && sec !== st.tick && sec > 0){ st.tick = sec; }
           if(b.hold >= need) this.defuse(E, b);
         }
+
+        /* とげとげの のこる じかん。「ずっと」(0) なら 消えない（とどめて 呼吸を 合わせて とばす やりとりを のこす）。
+           じかんが 来たら 0.4秒で しぼんで 消える。しっぱいには しない */
+        if(b.toge && s.togeLife > 0){
+          b.age += dt;
+          if(b.age >= s.togeLife){
+            b.shrink = (b.shrink || 0) + dt;
+            if(b.shrink >= this.SHRINK){
+              st.togeMiss++;
+              E.floatText(b.x, Math.min(b.y, E.H*0.9), 'きえちゃった', '#c8ccd6');
+              st.ball = null; st.phase = 'ready'; st.wait = s.wait; st.tick = -1;
+            }
+          }
+        }
       }
     }
 
     if(st.flash){ st.flash.t -= dt; if(st.flash.t <= 0) st.flash = null; }
+    for(const t of ['A','B']){
+      st.pop[t] = Math.max(0, st.pop[t] - dt);
+      st.wallPop[t] = Math.max(0, st.wallPop[t] - dt);
+    }
+    /* はじけた とげの うごき */
+    for(const p of st.fx){
+      p.life += dt;
+      if(p.t === 'shard'){ p.vy += E.H*1.5*dt; p.x += p.vx*dt; p.y += p.vy*dt; }
+    }
+    st.fx = st.fx.filter(p => p.life < p.max);
   },
 
   physics(dt, E, g){
@@ -2269,7 +2455,11 @@ const SEESAW = {
     const steps = 4, h = dt/steps;
     for(let i=0;i<steps;i++){
       const wasY = b.y;
-      b.vy += grav * h;
+      /* とげとげの とびやすさ ＝ かるさ（重力を とびやすさ で わる）。
+         板の 押す 力を 強めても 真上に とぶだけで かべには 近づかなかった。かるいと 板から はなれやすく、
+         とんでいる 時間が のびて よこへ 遠くまで とぶ。ゆっくり 立つ 子でも とどく（カメラなしの 計算で、
+         ひとりで 立つ ときに とどく いちばん おそい 立ち上がりが ふつう 0.3〜0.4秒 → 1.4 で 0.5秒 → 1.9 で 0.6〜0.7秒） */
+      b.vy += (b.toge ? grav / (s.fly || 1) : grav) * h;
       b.x += b.vx * h;
       b.y += b.vy * h;
 
@@ -2318,6 +2508,28 @@ const SEESAW = {
         }
       }
 
+      /* 画面の はしの かべ。とげとげが じぶんの いろの かべに 当たったら はじけて せいこう。
+         ほかは はねかえるだけ（ちがう いろの かべでも しっぱいに しない。もう いちど ねらえる） */
+      if(g.side > 0){
+        for(const side of ['A','B']){
+          const wx = side === 'A' ? g.side : E.W - g.side;
+          const over = side === 'A' ? (wx + b.r) - b.x : b.x - (wx - b.r);
+          if(over <= 0) continue;
+          const vIn = side === 'A' ? -b.vx : b.vx;     // かべに むかう 速さ
+          // せいこうは かごの ふちより 上（いろを ぬった ところ）だけ。かごの うしろに 落ちて 下で 当たったのは とばした ことに ならない
+          if(vIn > 0 && b.toge && b.kind === side && b.y < g.rimY){ this.togeHit(E, side, b, wx); return; }
+          b.x += side === 'A' ? over : -over;
+          if(vIn > 0){ b.vx = (side === 'A' ? 1 : -1) * vIn * 0.6; st.wallPop[side] = 0.5; }
+        }
+        /* てんじょう：とびすぎて 見えなくならないよう はねかえす。
+           ボールは 画面の 上から 入ってくるので、いちど 画面に 入ってから 効かせる */
+        if(b.y > g.side + b.r*2) b.inView = true;
+        if(b.inView && b.y - b.r < g.side){
+          b.y = g.side + b.r;
+          if(b.vy < 0) b.vy = -b.vy * 0.5;
+        }
+      }
+
       /* かごの上辺を通過したら「入った」 */
       for(const side of ['A','B']){
         const box = this.basketBox(g, side);
@@ -2338,25 +2550,86 @@ const SEESAW = {
              innerX: side === 'A' ? x1 - g.wall : x0 };
   },
 
+  /* --- れんぞくで せいこうしたときの もりあがり（せいこうのときだけ。しっぱいは ひかえめのまま） --- */
+  cheer(E, x, y, color){
+    const n = this.st.combo;
+    if(n < 2) return;
+    const SCALE = [523, 587, 659, 698, 784, 880, 988, 1047];   // ド から 1つずつ 上がる
+    const f = SCALE[Math.min(n-2, SCALE.length-1)];
+    setTimeout(()=>E.beep(f, 0.16, 'triangle'), 150);
+    E.burst(x, y, color, Math.min(30, n*5));
+    if(n % 5 === 0){                                           // 5れんぞくごとに かみふぶき
+      const cols = ['#f5c542', '#5b8ff0', '#e0534c', '#5bbd4a', '#ffffff'];
+      for(let i=0;i<6;i++) E.burst(E.W*(0.12 + i*0.152), E.H*0.16, cols[i % cols.length], 18);
+      setTimeout(()=>E.sfx.bonus(), 300);
+    }
+  },
+
+  /* --- とげとげが じぶんの いろの かべに とどいた。はじけて +1、まとに 当たれば さらに +1 --- */
+  togeHit(E, side, b, wx){
+    const st = this.st, g = this.geo(E);
+    const onTgt = E.s.wallTgt > 0 && Math.abs(b.y - g.tgtY) < g.tgtR + b.r*0.5;
+    st.togeOk++; st.combo++; st.best = Math.max(st.best, st.combo);
+    st.wallPop[side] = 0.5;
+    E.award(side, 1, 'good', wx, b.y);
+    if(onTgt){ st.togeTgt++; E.award(side, 1, 'bonus', wx, b.y + E.H*0.06); }
+    this.togePop(E, wx, b.y, side);
+    this.cheer(E, wx, b.y, side === 'A' ? '#5b8ff0' : '#e0534c');
+    st.flash = onTgt ? { t:1.2, ok:true, text:'まとに あたった！ +2', color:'#f5c542', size:1.2 }
+                     : { t:1.1, ok:true, text:'とどいた！', color:'#7fd8ff', size:1.1 };
+    st.ball = null; st.phase = 'ready'; st.wait = E.s.wait; st.tick = -1;
+  },
+
+  /* --- はじける 演出（白い 輪・銀の とげが とびちる・いろの 粒・音）。
+     見た目は ここに まとめておく（あとで 絵の 素材に さしかえるとき ここだけ かえればよい） --- */
+  togePop(E, x, y, side){
+    const st = this.st, r = this.geo(E).r;
+    const away = side === 'A' ? 0 : Math.PI;            // かべから はなれる 向きに とぶ
+    st.fx.push({ t:'ring', x, y, life:0, max:0.45, r });
+    for(let i=0;i<8;i++){
+      const a = away + (i/7 - 0.5) * Math.PI * 1.1, v = E.H * (0.55 + Math.random()*0.25);
+      st.fx.push({ t:'shard', x, y, vx:Math.cos(a)*v, vy:Math.sin(a)*v - E.H*0.12,
+                   rot:a, vr:(Math.random()-0.5)*14, life:0, max:0.75, r });
+    }
+    E.burst(x, y, side === 'A' ? '#9dc0ff' : '#ffa8a3', 24);
+    E.beep(1200, 0.05, 'square', 0.25);                  // パン
+    setTimeout(()=>E.beep(700, 0.08, 'triangle'), 40);
+    setTimeout(()=>E.sfx.hit(), 90);
+  },
+
   /* --- ばくだんを処理できた --- */
   defuse(E, b){
     const st = this.st;
     E.burst(b.x, b.y, '#5bbd4a', 34);
-    E.floatText(b.x, b.y - b.r*1.4, 'かいじょ！', '#8ce87a');
     E.sfx.bonus();
     st.defused++; st.combo++; st.best = Math.max(st.best, st.combo);
-    st.flash = { t:1.4, ok:true, text:'ばくだん かいじょ！　ふたりの てがら' };
+    this.cheer(E, b.x, b.y, '#5bbd4a');
+    st.flash = { t:1.4, ok:true, text:'かいじょ！' };
     st.ball = null; st.phase = 'ready'; st.wait = E.s.wait; st.tick = -1;
   },
+
+  /* --- おなじ いろの かごに 入れたときの ことば。れんぞくが のびるほど 1だんずつ 上がる（上から しらべる） --- */
+  RANKS: [
+    { n:5, text:'エクセレント！', color:'#ff8ad8', size:1.3 },
+    { n:3, text:'グレート！',     color:'#ffd23f', size:1.2 },
+    { n:2, text:'グッド！',       color:'#7fd8ff', size:1.1 },
+    { n:1, text:'ナイス！',       color:'#8ce87a', size:1.0 },
+  ],
 
   /* --- かごに入った／落ちた --- */
   settle(E, side){
     const st = this.st, b = st.ball;
 
-    if(b.kind === 'bomb'){
+    if(b.toge){
+      // とげとげが かごに 入った／落ちた：「おしい」。点なし・れんぞくは 切らない・しっぱいに 数えない
+      st.togeMiss++;
+      E.floatText(b.x, Math.min(b.y, E.H*0.9), 'おしい', '#c8ccd6');
+      st.flash = { t:1.1, ok:false, text:'おしい！ かべまで とばそう', color:'#c8ccd6' };
+    }else if(b.kind === 'bomb'){
       st.combo = 0; st.bombFail++;
       if(side){
         E.award(side, -1, 'bad', b.x, b.y);       // 入れてしまったかごの数が1つ減る
+        st.stack[side] = Math.max(0, st.stack[side] - 1);
         st.flash = { t:1.4, ok:false, text:'ばくだんを かごに 入れてしまった' };
       }else{
         E.miss('A'); E.miss('B');
@@ -2367,7 +2640,11 @@ const SEESAW = {
       st.combo++; st.best = Math.max(st.best, st.combo);
       if(b.kind === 'A') st.okA++; else st.okB++;
       E.award(b.kind, 1, 'good', b.x, b.y);
-      st.flash = { t:1.1, ok:true, text: st.combo >= 3 ? `そろった！ ${st.combo}れんぞく` : 'そろった！' };
+      this.cheer(E, b.x, b.y, b.kind === 'A' ? '#5b8ff0' : '#e0534c');
+      st.stack[side]++; st.pop[side] = 0.45;
+      const r = this.RANKS.find(k => st.combo >= k.n);
+      st.flash = { t:1.1, ok:true, text: st.combo >= 3 ? `${r.text} ${st.combo}れんぞく` : r.text,
+                   color:r.color, size:r.size };
     }else{
       st.combo = 0;
       if(side) st.wrong++; else st.dropped++;
@@ -2381,13 +2658,14 @@ const SEESAW = {
   /* ---------------- ゲーム中の合計 ---------------- */
   hudTotal(){
     const st = this.st; if(!st) return '';
-    return `ふたりで ${st.okA + st.okB + st.defused}こ`;
+    return `ふたりで ${st.okA + st.okB + st.defused + st.togeOk}こ`;
   },
 
   /* ---------------- 結果（勝ち負けではなく、2人でいくつそろえたか） ---------------- */
   result(E){
     const st = this.st || {};
-    const ok    = (st.okA||0) + (st.okB||0) + (st.defused||0);
+    const ok    = (st.okA||0) + (st.okB||0) + (st.defused||0) + (st.togeOk||0);
+    // とげとげが とどかなかったのは「おしい」。しっぱいには 数えない
     const fails = (st.wrong||0) + (st.dropped||0) + (st.bombFail||0);
     const all   = ok + fails;
     const rate  = all ? Math.round(ok/all*100) : 0;
@@ -2409,7 +2687,10 @@ const SEESAW = {
         { label:'あおの かごへ', value: st.okA||0, detail:'そろえた かず' },
         { label:'あかの かごへ', value: st.okB||0, detail:'そろえた かず' },
       ],
-      line: (E.s.bomb ? `ばくだん かいじょ ${st.defused||0}かい　／　` : '')
+      // とげとげは「なんこ とんで なんこ とどいたか」を 出す（いきおいよく 立てたかの 観察の 手がかり）
+      line: (E.s.toge > 0 ? `とげとげ かべに とどいた ${st.togeOk||0}／${(st.togeOk||0) + (st.togeMiss||0)}こ`
+                            + (E.s.wallTgt > 0 ? `（まと ${st.togeTgt||0}かい）` : '') + '　／　' : '')
+          + (E.s.bomb ? `ばくだん かいじょ ${st.defused||0}かい　／　` : '')
           + `しっぱい ${fails}かい（${parts.join('　')}）`,
     };
   },
@@ -2429,10 +2710,12 @@ const SEESAW = {
     }
     if(pixel){
       ctx.rotate(b.spin);
-      const N = this.PXB;
-      const s = Math.max(N, Math.round(r*2/N)*N);
+      const s = this.pixSize(b, r);
       ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(this.tiles()[b.kind], -s/2, -s/2, s, s);
+      ctx.drawImage(this.tileOf(b), -s/2, -s/2, s, s);
+    }else if(b.toge){
+      ctx.rotate(b.spin);
+      this.vecToge(ctx, c, r);
     }else{
       ctx.rotate(b.spin);
       const gr = ctx.createRadialGradient(-r*0.3, -r*0.35, r*0.1, 0, 0, r);
@@ -2450,6 +2733,53 @@ const SEESAW = {
     }
     ctx.restore();
   },
+  /* はじけた 輪と とげ（togePop で 作ったものを 描く） */
+  drawTogeFx(E, pixel){
+    const ctx = E.ctx, tip = this.TOGE_TIP;
+    for(const p of this.st.fx){
+      const al = Math.max(0, 1 - p.life/p.max);
+      ctx.save(); ctx.globalAlpha = al;
+      if(p.t === 'ring'){
+        ctx.lineWidth = Math.max(4, p.r*0.22); ctx.strokeStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r*(1 + p.life/p.max*5), 0, Math.PI*2); ctx.stroke();
+      }else{
+        ctx.translate(Math.round(p.x), Math.round(p.y));
+        ctx.rotate(p.rot + p.vr*p.life);
+        const L = p.r*0.62, Wd = p.r*0.26;
+        if(pixel){
+          ctx.fillStyle = tip[0]; ctx.fillRect(-L/2, -Wd/2, L, Wd);
+          ctx.fillStyle = tip[2]; ctx.fillRect(-L/2, Wd/2 - Math.max(2, Wd*0.3), L, Math.max(2, Wd*0.3));
+        }else{
+          ctx.beginPath(); ctx.moveTo(-L*0.45, -Wd*0.6); ctx.lineTo(L*0.6, 0); ctx.lineTo(-L*0.45, Wd*0.6); ctx.closePath();
+          ctx.fillStyle = tip[0]; ctx.fill();
+          ctx.lineWidth = Math.max(1.5, p.r*0.06); ctx.strokeStyle = tip[2]; ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+  },
+
+  /* くっきり用の とげとげ（原点が 中心。r は 体の はんけい） */
+  vecToge(ctx, c, r){
+    const tip = this.TOGE_TIP, w = 0.30;
+    ctx.beginPath();
+    for(let k=0;k<8;k++){
+      const t = k*Math.PI/4;
+      ctx.moveTo(Math.cos(t-w)*r*0.9, Math.sin(t-w)*r*0.9);
+      ctx.lineTo(Math.cos(t)*r*1.62,  Math.sin(t)*r*1.62);
+      ctx.lineTo(Math.cos(t+w)*r*0.9, Math.sin(t+w)*r*0.9);
+      ctx.closePath();
+    }
+    ctx.fillStyle = tip[0]; ctx.fill();
+    ctx.lineWidth = Math.max(1.5, r*0.07); ctx.strokeStyle = tip[2]; ctx.stroke();
+    const gr = ctx.createRadialGradient(-r*0.3, -r*0.35, r*0.1, 0, 0, r);
+    gr.addColorStop(0, c[1]); gr.addColorStop(1, c[2]);
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI*2);
+    ctx.fillStyle = gr; ctx.fill();
+    ctx.lineWidth = Math.max(2, r*0.12); ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    for(const sx of [-1, 1]){ ctx.beginPath(); ctx.arc(sx*r*0.42, 0, r*0.14, 0, Math.PI*2); ctx.fill(); }
+  },
 
   render(now, E){
     if(!this.st) this.reset(E);
@@ -2463,12 +2793,65 @@ const SEESAW = {
     ctx.fillStyle = 'rgba(255,255,255,.16)';
     ctx.fillRect(0, g.groundY, E.W, Math.max(3, E.H*0.005));
 
+    /* かべと まと（かべに はりついた 半分の まと。当たると ゆれる） */
+    if(g.side > 0){
+      // てんじょう（見た目は かべと おなじ。ボールは この上から 入ってくる）
+      ctx.fillStyle = 'rgba(10,10,14,.6)';
+      ctx.fillRect(0, 0, E.W, g.side);
+      ctx.fillStyle = 'rgba(255,255,255,.28)';
+      ctx.fillRect(0, g.side - Math.max(2, g.side*0.3), E.W, Math.max(2, g.side*0.3));
+      for(const side of ['A','B']){
+        const c = COL[side], left = side === 'A';
+        const wx = left ? g.side : E.W - g.side;
+        ctx.fillStyle = 'rgba(10,10,14,.6)';
+        ctx.fillRect(left ? 0 : wx, 0, g.side, g.groundY);
+        // どちらの いろの かべかが 分かるよう、うちがわの ふちを チームの いろに（当たると あかるく）。
+        // ぬるのは とげとげが せいこうに なる 高さ（かごの ふちより 上）だけ
+        const k = st.wallPop[side] / 0.5;
+        ctx.fillStyle = k > 0 ? c[1] : c[0];
+        const sw = Math.max(4, g.side*0.45);
+        ctx.fillRect(left ? wx - sw : wx, g.side, sw, g.rimY - g.side);
+        if(g.tgtR <= 0) continue;
+        const R = g.tgtR * (1 + Math.sin(k*Math.PI)*0.18);
+        const a0 = left ? -Math.PI/2 : Math.PI/2;
+        for(let i=0;i<4;i++){
+          ctx.beginPath(); ctx.moveTo(wx, g.tgtY);
+          ctx.arc(wx, g.tgtY, R*(1 - i*0.25), a0, a0 + Math.PI); ctx.closePath();
+          ctx.fillStyle = i % 2 ? '#f2f2f5' : c[0]; ctx.fill();
+        }
+        ctx.fillStyle = c[2];
+        ctx.fillRect(left ? wx - g.side*0.4 : wx, g.tgtY - R, g.side*0.4, R*2);
+      }
+    }
+
     /* かご */
     for(const side of ['A','B']){
       const box = this.basketBox(g, side), c = COL[side];
       const w = box.x1-box.x0, h = box.y1-box.y0;
+      // 入った瞬間に ぽよんと はずむ（見た目だけ。当たり判定の かごは 動かない）
+      const pk = st.pop[side] / 0.45;
+      const sq = Math.sin(pk * Math.PI) * 0.07;
+      ctx.save();
+      ctx.translate((box.x0+box.x1)/2, box.y1);
+      ctx.scale(1 + sq, 1 - sq);
+      ctx.translate(-(box.x0+box.x1)/2, -box.y1);
       ctx.fillStyle = 'rgba(10,10,14,.55)';
       ctx.fillRect(box.x0, box.y0, w, h);
+
+      /* たまった ボール（下から つめて ならべる。入りきらない ぶんは 描かない） */
+      const inner = w - g.wall*2;
+      const rs = Math.min(g.r*0.62, inner/2);    // 落ちてくる ボールより 小さめにして 20こ前後 入るように
+      const perRow = Math.max(1, Math.floor(inner / (rs*2)));
+      const rows = Math.max(1, Math.floor(h*0.75 / (rs*1.8)));
+      const shown = Math.min(st.stack[side], perRow*rows);
+      const padX = (inner - perRow*rs*2) / 2;
+      for(let i=0;i<shown;i++){
+        const row = Math.floor(i / perRow), col = i % perRow;
+        const bx = box.x0 + g.wall + padX + rs + col*rs*2;
+        const by = box.y1 - g.wall - rs - row*rs*1.8;
+        this.drawBall(E, { kind: side, spin: i*1.7 }, rs, bx, by);
+      }
+
       ctx.fillStyle = c[2];
       ctx.fillRect(box.outerX, box.backTop, g.wall, box.y1 - box.backTop);
       ctx.fillRect(box.innerX, box.y0, g.wall, h);
@@ -2480,10 +2863,13 @@ const SEESAW = {
         ctx.fillStyle = 'rgba(255,255,255,.25)';
         ctx.fillRect(box.x0-g.wall*0.6, box.y0-g.wall, w+g.wall*1.2, 3);
       }
-      ctx.fillStyle = c[1];
       ctx.font = `${Math.round(E.H*0.036)}px ${E.font()}`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = Math.max(3, E.H*0.008); ctx.strokeStyle = 'rgba(10,10,14,.85)';   // ボールに かさなっても 読めるように ふちどり
+      ctx.strokeText(side === 'A' ? 'あお' : 'あか', (box.x0+box.x1)/2, box.y1 - h*0.22);
+      ctx.fillStyle = c[1];
       ctx.fillText(side === 'A' ? 'あお' : 'あか', (box.x0+box.x1)/2, box.y1 - h*0.22);
+      ctx.restore();
     }
 
     /* シーソー */
@@ -2516,16 +2902,30 @@ const SEESAW = {
     if(b){
       // 影（ボールと同じ まるいかたち。四角く塗らない）
       if(pixel){
-        const sz = Math.max(this.PXB, Math.round(b.r*2/this.PXB)*this.PXB);
+        const sz = this.pixSize(b, b.r);
         ctx.save(); ctx.globalAlpha = 0.35; ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(shadowTile(this.tiles()[b.kind]),
-                      Math.round(b.x-sz/2)+5, Math.round(b.y-sz/2)+6, sz, sz);
+        // とげとげは かげも いっしょに まわす（とげの かげが 止まって 見えないように）
+        ctx.translate(Math.round(b.x)+5, Math.round(b.y)+6);
+        if(b.toge) ctx.rotate(b.spin);
+        ctx.drawImage(shadowTile(this.tileOf(b)), -sz/2, -sz/2, sz, sz);
         ctx.restore();
       }else{
         ctx.fillStyle = 'rgba(0,0,0,.32)';
         ctx.beginPath(); ctx.arc(b.x+4, b.y+5, b.r, 0, Math.PI*2); ctx.fill();
       }
-      this.drawBall(E, b, b.r, b.x, b.y);
+      const shrinkK = b.shrink ? Math.max(0.05, 1 - b.shrink/this.SHRINK) : 1;
+      this.drawBall(E, b, b.r * shrinkK, b.x, b.y);
+
+      /* とげとげの のこり じかん（「ずっと」の ときは 出さない。のこり 3びょうから） */
+      if(b.toge && E.s.togeLife > 0 && !b.shrink){
+        const left = E.s.togeLife - b.age;
+        if(left <= 3){
+          ctx.fillStyle = '#c8ccd6';
+          ctx.font = `${Math.round(E.H*0.03)}px ${E.font()}`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+          ctx.fillText(`あと ${Math.max(1, Math.ceil(left))}`, b.x, b.y - b.r*1.8);
+        }
+      }
 
       /* ばくだんの処理ゲージ */
       if(b.kind === 'bomb'){
@@ -2546,9 +2946,13 @@ const SEESAW = {
       }
     }
 
+    /* とげとげが はじけた あと */
+    if(st.fx.length) this.drawTogeFx(E, pixel);
+
     /* つぎのボールの予告 */
     if(st.phase === 'ready' && E.s.preview){
-      const kind = st.next, c = COL[kind], isBomb = kind === 'bomb';
+      const nk = st.next, nToge = nk[0] === 's', kind = nToge ? nk[1] : nk;
+      const c = COL[kind], isBomb = kind === 'bomb';
       const pw = Math.min(E.W*0.40, g.cxR - g.cxL - g.bw - E.W*0.02);
       const ph = E.H*0.155;
       const px0 = E.W/2 - pw/2, py0 = E.H*0.80 - ph/2;
@@ -2558,14 +2962,14 @@ const SEESAW = {
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = '#c8c8d2';
       ctx.font = `${Math.round(E.H*0.026)}px ${E.font()}`;
-      ctx.fillText(isBomb ? 'つぎは ばくだん' : 'つぎの ボール', E.W/2, py0 + ph*0.26);
+      ctx.fillText(isBomb ? 'つぎは ばくだん' : nToge ? 'つぎは とげとげ' : 'つぎの ボール', E.W/2, py0 + ph*0.26);
       const r2 = ph*0.22;
-      this.drawBall(E, { kind, spin: now/900 }, r2, px0 + pw*0.16, py0 + ph*0.66);
+      this.drawBall(E, { kind, toge: nToge, spin: now/900 }, r2, px0 + pw*0.16, py0 + ph*0.66);
       ctx.fillStyle = isBomb ? '#ff9a95' : c[1];
       ctx.font = `${Math.round(E.H*0.034)}px ${E.font()}`;
       ctx.textAlign = 'left';
       ctx.fillText(isBomb ? `シーソーの上で ${E.s.holdSec}びょう とめる`
-                          : kind === 'A' ? 'あおの かごへ' : 'あかの かごへ',
+                          : (kind === 'A' ? 'あおの ' : 'あかの ') + (nToge ? 'かべへ' : 'かごへ'),
                    px0 + pw*0.29, py0 + ph*0.66);
       ctx.textAlign = 'center';
       ctx.fillStyle = '#f5c542';
@@ -2573,19 +2977,50 @@ const SEESAW = {
       ctx.fillText(`${Math.max(0, Math.ceil(st.wait))}`, px0 + pw*0.92, py0 + ph*0.26);
     }
 
-    /* 頭の位置と基準線 */
+    /* 頭の位置と基準線（離れて見ても「だれが うごかしているか」分かる大きさ） */
     if(E.s.marker && E.poses.length){
       for(const side of ['A','B']){
         const h = st.head[side]; if(!h) continue;
         const c = COL[side];
         const hx = h.x*E.W, hy = h.y*E.H;
+        const mr = E.H*0.055, lw = Math.max(3, E.H*0.009);
+        ctx.lineWidth = lw*2.2; ctx.strokeStyle = 'rgba(10,10,14,.6)';
+        ctx.beginPath(); ctx.arc(hx, hy, mr, 0, Math.PI*2); ctx.stroke();
+        ctx.lineWidth = lw; ctx.strokeStyle = c[1];
+        ctx.beginPath(); ctx.arc(hx, hy, mr, 0, Math.PI*2); ctx.stroke();
+        ctx.font = `${Math.round(E.H*0.030)}px ${E.font()}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.lineWidth = lw; ctx.strokeStyle = 'rgba(10,10,14,.8)';
+        const tag = side === 'A' ? 'あお' : 'あか';
+        ctx.strokeText(tag, hx, hy - mr - E.H*0.008);
         ctx.fillStyle = c[1];
-        ctx.fillRect(Math.round(hx-8), Math.round(hy-8), 16, 16);
+        ctx.fillText(tag, hx, hy - mr - E.H*0.008);
         if(st.base[side] != null){
           const by = st.base[side]*E.H;
+          const dash = E.H*0.012, gap = E.H*0.008, th = Math.max(2, E.H*0.004);
           ctx.fillStyle = 'rgba(245,197,66,.75)';
-          for(let x=hx-E.W*0.05; x<hx+E.W*0.05; x+=14) ctx.fillRect(Math.round(x), Math.round(by)-1, 8, 3);
+          for(let x=hx-E.W*0.05; x<hx+E.W*0.05; x+=dash+gap) ctx.fillRect(Math.round(x), Math.round(by-th/2), Math.round(dash), Math.round(th));
         }
+      }
+    }
+
+    /* 基準が まだ取れていない子への あんない（失敗にはしない。カメラなしのお試しでは出さない） */
+    if(st.started && st.calib <= 0 && !E.cfg.__test){
+      for(const side of ['A','B']){
+        if(st.base[side] != null) continue;
+        const seen = !!st.head[side] && E.poses.length > 0;
+        const msg = (side === 'A' ? 'あおの ひと　' : 'あかの ひと　')
+                  + (seen ? 'まっすぐ たってね' : 'カメラに うつってね');
+        const fs = Math.round(E.H*0.034);
+        ctx.font = `${fs}px ${E.font()}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const cx = side === 'A' ? E.W*0.25 : E.W*0.75, cy = E.H*0.12;
+        const bw2 = ctx.measureText(msg).width + fs*1.2, bh2 = fs*1.8;
+        ctx.fillStyle = 'rgba(10,10,14,.8)';
+        ctx.fillRect(cx-bw2/2, cy-bh2/2, bw2, bh2);
+        E.pxRect(cx-bw2/2, cy-bh2/2, bw2, bh2, COL[side][0], 3);
+        ctx.fillStyle = COL[side][1];
+        ctx.fillText(msg, cx, cy);
       }
     }
 
@@ -2604,23 +3039,1066 @@ const SEESAW = {
     /* 成否の表示 */
     if(st.flash){
       ctx.save(); ctx.globalAlpha = Math.min(1, st.flash.t*1.6);
-      const fs = Math.round(E.H*0.052);
+      const fs = Math.round(E.H*0.052*(st.flash.size || 1));
       ctx.font = `${fs}px ${E.font()}`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const ty = E.H*0.26;
       const fw = ctx.measureText(st.flash.text).width + fs*1.4, fh = fs*1.9;
       ctx.fillStyle = 'rgba(10,10,14,.88)';
       ctx.fillRect(E.W/2-fw/2, ty-fh/2, fw, fh);
-      E.pxRect(E.W/2-fw/2, ty-fh/2, fw, fh, st.flash.ok ? '#5bbd4a' : '#d6423c', 3);
-      ctx.fillStyle = st.flash.ok ? '#8ce87a' : '#ff9a95';
+      E.pxRect(E.W/2-fw/2, ty-fh/2, fw, fh, st.flash.color || (st.flash.ok ? '#5bbd4a' : '#d6423c'), 3);
+      ctx.fillStyle = st.flash.color || (st.flash.ok ? '#8ce87a' : '#ff9a95');
       ctx.fillText(st.flash.text, E.W/2, ty);
       ctx.restore();
     }
   },
 };
 
+/* ============================================================================
+   とまれ（だるまさんが ころんだ ＋ コインブロック）
+   おにが うしろを むいている あいだは、ジャンプ（または 手）で 頭の上の
+   ブロックを たたいて コインを出す。おにが ふりむいたら ぴたっと 止まる。
+   ときどき 出る「ポーズ カード」と おなじ かっこうを すると ボーナス コイン。
+   ＝ 抑制（動→静の 切りかえ）・姿勢保持・抗重力（ジャンプ）・身体図式（ポーズ）
+
+   とまれ 中の 判定は これまでと おなじ：
+   ・フレーム間の うごき量（鼻・肩・手首・こしの 移動 ÷ 胴の長さ）を なめらかにした値
+   ・止まってから 0.35秒は 見のがす／しきい値を 0.15秒 こえて はじめて「うごいた」
+   ・「うごいた」は そのラウンド 1回だけ／認識が 切れている あいだは ノーカウント
+   ジャンプは、こしの高さが「地面に いるときの こし」より 胴の長さ×しきい値 だけ
+   上がったら 1回。「てで たたく」段は 手首が 頭より 上に 来たら 1回（座位で 参加できる）。
+   「たたかない」段は もとの とまれ（止まるだけ）。
+
+   1チーム 2人まで 人ごとに 見る（人ごとに ブロックを 出す）。人の 対応づけは
+   チーム内の 左右の ならび順。
+   ポーズ カードは 決まった ラウンドに 決まった 順で 出す（運で 出ない・README §6）。
+   絵は すべて コードで 描く。ボクセルテーマでは 同じ絵を 小さな キャンバスに 描いて
+   アルファを 2値化してから 拡大する（spr）。
+
+   custom:true。画面中央に おにを 出すので modes:['vs']。
+   ============================================================================ */
+const FREEZE_GAME = {
+  id:'freeze',
+  name:'とまれ',
+  tags:['抑制','姿勢保持','抗重力','身体図式'],
+  desc:'おにが うしろを むいている あいだは ジャンプで 頭の上の ブロックを たたいて コインを あつめ、おにが ふりむいたら ぴたっと 止まります。ときどき 出る ポーズを まねすると ボーナス。だるまさんが ころんだ の あそびです。',
+  modes:['vs'],
+  custom:true,
+
+  READY:1.2,
+  SETTLE:0.35,        // 「とまれ」の あと、見のがす時間
+  OVER_NEED:0.15,     // うごき量が しきい値を こえたまま この秒数で「うごいた」
+  ENDCARD:1.1,
+  TURN:0.32,          // おにが ふりむく アニメの 秒数
+  HIT_COOL:0.30,      // ブロックを たたいてから 次に たたけるまで
+  POSE_HOLD:0.6,      // ポーズを この秒数 たもつと ボーナス
+  POSE_OUT:0.30,      // ポーズが くずれても この秒数は 見のがす（入りは 速く・抜けは 遅く・§7）
+  POSE_PTS:3,
+  POSE_EXTRA:1.2,     // ポーズの ラウンドは うごく 時間を この秒数 のばす
+  MAXP:2,             // 1チームで 見る 人数
+  PTS:[0,11,12,15,16,23,24],   // うごきを見る点（鼻・肩・手首・こし）
+  CHANT1:'だるまさんが',
+  CHANT2:'ころんだ',
+
+  // ポーズ カード。legs:true は「ポーズの しゅるい：あしも」のときだけ 出る
+  POSES:[
+    { id:'banzai', name:'ばんざい',    legs:false },
+    { id:'plane',  name:'ひこうき',    legs:false },
+    { id:'head',   name:'あたまに て', legs:false },
+    { id:'hips',   name:'こしに て',   legs:false },
+    { id:'flam',   name:'かたあし',    legs:true },
+    { id:'squat',  name:'しゃがむ',    legs:true },
+  ],
+
+  preview(g, w, h){
+    const sky = g.createLinearGradient(0,0,0,h);
+    sky.addColorStop(0,'#5fb8ff'); sky.addColorStop(1,'#bfe6ff');
+    g.fillStyle = sky; g.fillRect(0,0,w,h);
+    this.drawCloud(g, w*0.16, h*0.2, h*0.2); this.drawCloud(g, w*0.86, h*0.16, h*0.16);
+    this.drawGround(g, w, h, h*0.84, 0);
+    const pixel = TH().pixel;
+    const put = (key, R, D, x, y, fn) => pixel ? this.spr(g, key, R, D, x, y, fn) : fn(g, x, y, D);
+    put('pv_oni', 56, h*0.62, w*0.5, h*0.4, (q,x,y,D) => this.drawOni(q, x, y, D, 0, 0, {}));
+    put('pv_blk', 20, h*0.2, w*0.2, h*0.3, (q,x,y,D) => this.drawBlock(q, x, y, D, 'ready'));
+    put('pv_blk', 20, h*0.2, w*0.8, h*0.3, (q,x,y,D) => this.drawBlock(q, x, y, D, 'ready'));
+    put('pv_coin', 16, h*0.14, w*0.2, h*0.11, (q,x,y,D) => this.drawCoin(q, x, y, D/2, 0));
+    // ジャンプしている子
+    g.strokeStyle = '#1d3b8f'; g.lineWidth = Math.max(4,h*0.03); g.lineCap = 'round';
+    let cx = w*0.2, cy = h*0.58, s = h*0.26;
+    g.beginPath(); g.arc(cx, cy-s*0.55, s*0.15, 0, Math.PI*2); g.stroke();
+    g.beginPath(); g.moveTo(cx, cy-s*0.4); g.lineTo(cx, cy+s*0.1);
+    g.moveTo(cx, cy-s*0.3); g.lineTo(cx-s*0.3, cy-s*0.6); g.moveTo(cx, cy-s*0.3); g.lineTo(cx+s*0.3, cy-s*0.6);
+    g.moveTo(cx, cy+s*0.1); g.lineTo(cx-s*0.22, cy+s*0.35); g.moveTo(cx, cy+s*0.1); g.lineTo(cx+s*0.22, cy+s*0.35);
+    g.stroke();
+    // 止まっている子
+    g.strokeStyle = '#8f1d1d'; cx = w*0.8; cy = h*0.62;
+    g.beginPath(); g.arc(cx, cy-s*0.55, s*0.15, 0, Math.PI*2); g.stroke();
+    g.beginPath(); g.moveTo(cx, cy-s*0.4); g.lineTo(cx, cy+s*0.1);
+    g.moveTo(cx, cy-s*0.3); g.lineTo(cx-s*0.32, cy-s*0.3); g.moveTo(cx, cy-s*0.3); g.lineTo(cx+s*0.32, cy-s*0.3);
+    g.moveTo(cx, cy+s*0.1); g.lineTo(cx-s*0.12, cy+s*0.4); g.moveTo(cx, cy+s*0.1); g.lineTo(cx+s*0.12, cy+s*0.4);
+    g.stroke();
+  },
+
+  settings:[
+    { key:'hit', label:'ブロックの たたきかた', quick:true,
+      opts:[[0,'たたかない'],[1,'てで たたく'],[2,'ジャンプ']], def:2 },
+    { key:'jump', label:'ジャンプの たかさ', quick:true,
+      opts:[[0.10,'ちいさく'],[0.17,'ふつう'],[0.26,'たかく']], def:0.17 },
+    { key:'poseBonus', label:'ポーズ ボーナス', quick:true,
+      opts:[[0,'なし'],[1,'すこし'],[2,'ふつう'],[3,'おおい']], def:2 },
+    { key:'poseKind', label:'ポーズの しゅるい',
+      opts:[[0,'うでだけ'],[1,'あしも']], def:0 },
+    { key:'caught', label:'みつかったら',
+      opts:[[0,'なにもなし'],[1,'コインを 1まい おとす'],[3,'コインを 3まい おとす']], def:1 },
+    { key:'warn', label:'とまれの よこく', quick:true,
+      opts:[[1.6,'ながい'],[0.9,'ふつう'],[0.35,'みじかい'],[0,'いきなり']], def:0.9 },
+    { key:'signal', label:'あいずの しゅるい', quick:true,
+      opts:[[0,'おに＋文字＋音'],[1,'おにを 見るだけ'],[2,'音だけ']], def:0 },
+    { key:'freezeDur', label:'とまる 長さ', quick:true,
+      opts:[[1.5,'みじかい'],[2.5,'ふつう'],[4,'ながい'],[6,'とても ながい']], def:2.5 },
+    { key:'moveDur', label:'うごく 長さ',
+      opts:[[2,'みじかい'],[3.5,'ふつう'],[5,'ながい']], def:3.5 },
+    { key:'tol', label:'じっとの きびしさ', quick:true,
+      opts:[[0.024,'ゆるい'],[0.013,'ふつう'],[0.007,'きびしい']], def:0.013 },
+  ],
+  presets:{
+    はじめて:   { desc:'てで たたく（すわったままでも）・よこく ながい・とまるのは みじかく',
+      v:{ hit:1, jump:0.10, poseBonus:1, poseKind:0, caught:0, warn:1.6, signal:0, freezeDur:1.5, moveDur:3.5, tol:0.024 } },
+    やさしい:   { desc:'まずは これから。ジャンプ ちいさく',
+      v:{ hit:2, jump:0.10, poseBonus:2, poseKind:0, caught:0, warn:0.9, signal:0, freezeDur:2.5, moveDur:3.5, tol:0.024 } },
+    ふつう:     { desc:'おにを 見て 止まる。みつかると 1まい おとす',
+      v:{ hit:2, jump:0.17, poseBonus:2, poseKind:0, caught:1, warn:0.9, signal:1, freezeDur:2.5, moveDur:3.5, tol:0.013 } },
+    むずかしい: { desc:'いきなり・音だけ・長く とまる・あしの ポーズも',
+      v:{ hit:2, jump:0.26, poseBonus:3, poseKind:1, caught:1, warn:0, signal:2, freezeDur:4, moveDur:2, tol:0.007 } },
+  },
+
+  /* ---------------- 状態 ---------------- */
+  reset(E){
+    this.st = {
+      phase:'ready', t:0, round:0, face:0, poseN:0,
+      sm:{A:0, B:0}, overT:{A:0, B:0},
+      seen:{A:false, B:false}, failed:{A:false, B:false}, judged:{A:false, B:false},
+      res:{A:'', B:''}, flash:{A:0, B:0},
+      ok:{A:0, B:0}, moved:{A:0, B:0}, combo:{A:0, B:0}, best:{A:0, B:0},
+      hits:{A:0, B:0}, poses:{A:0, B:0},
+      slots:{A:[], B:[]}, coins:[], drops:[], pose:null, chantN:0,
+      caughtBy:null, caughtT:0,
+      _tp:null, _testUp:false,
+    };
+    for(const t of ['A','B']) for(let i=0;i<this.MAXP;i++) this.st.slots[t].push(this.newSlot());
+  },
+  newSlot(){
+    return { on:false, x:0, ny:0, tor:0, base:null, air:false, airT:0, armUp:false,
+             cool:0, bump:0, prev:null, legMax:0, bx:null, by:null, B:0, used:0 };
+  },
+  start(E){
+    if(!this.st) this.reset(E);
+    const st = this.st;
+    this.enterMove(E);
+    st._tp = null;
+    st.failed = {A:false, B:false}; st.judged = {A:false, B:false};
+    st.res = {A:'', B:''};
+    // 交代で 人が 入れかわるので 体の 基準を とりなおす
+    for(const t of ['A','B']) st.slots[t] = st.slots[t].map(() => this.newSlot());
+  },
+
+  enterMove(E){
+    const st = this.st, s = E.s;
+    st.phase = 'move'; st.t = 0; st.chantN = 0;
+    const every = [0, 4, 2, 1][s.poseBonus] || 0;
+    st.pose = null;
+    if(every && (st.round % every) === every - 1){
+      const list = this.POSES.filter(p => !p.legs || s.poseKind >= 1);
+      const p = list[st.poseN % list.length];
+      st.poseN++;
+      st.pose = { id:p.id, name:p.name, prog:{A:0,B:0}, out:{A:0,B:0}, done:{A:false,B:false}, pop:0 };
+      E.beep(1046, 0.08, 'triangle', 0.08);
+      setTimeout(() => E.beep(1568, 0.12, 'triangle', 0.08), 90);
+    }
+  },
+  moveLen(E){ return E.s.moveDur + (this.st.pose ? this.POSE_EXTRA : 0); },
+
+  /* ---------------- 体を 読む ---------------- */
+  /* チームごとの 人の 配列（左から順・最大 MAXP 人）。テストでは ポインタ＝頭 */
+  observe(E){
+    const out = {A:[], B:[]};
+    if(E.cfg.__test){
+      const p = E.parts[0];
+      if(p) out[p.team].push({ test:true, x:p.x, ny:p.y, tor:E.H*0.2, pt:{} });
+      return out;
+    }
+    for(const lms of E.poses){
+      if(!lms || lms.length < 33) continue;
+      const vis = i => (lms[i] && (lms[i].visibility ?? 1)) || 0;
+      const sx = i => (1-lms[i].x)*E.W, sy = i => lms[i].y*E.H;
+      const tor = Math.hypot((sx(11)+sx(12))/2 - (sx(23)+sx(24))/2,
+                             (sy(11)+sy(12))/2 - (sy(23)+sy(24))/2);
+      if(tor < 20) continue;
+      const pt = {};
+      for(let i=0;i<33;i++) if(vis(i) > 0.5) pt[i] = { x:sx(i), y:sy(i) };
+      if(this.PTS.filter(i => pt[i]).length < 3) continue;
+      const team = E.teamOfPose(lms);
+      const x = pt[0] ? pt[0].x : (sx(11)+sx(12))/2;
+      const ny = pt[0] ? pt[0].y : (sy(11)+sy(12))/2 - tor*0.45;
+      const hipY = (pt[23] && pt[24]) ? (pt[23].y + pt[24].y)/2 : null;
+      out[team].push({ x, ny, tor, pt, hipY });
+    }
+    for(const t of ['A','B']){
+      out[t].sort((a,b) => b.tor - a.tor);
+      out[t] = out[t].slice(0, this.MAXP).sort((a,b) => a.x - b.x);
+    }
+    return out;
+  },
+
+  /* 1人ぶんの うごき量（前フレームとの差 ÷ 胴の長さ） */
+  motionOf(sl, p){
+    const prev = sl.prev;
+    sl.prev = p.pt;
+    if(!prev) return 0;
+    let sum = 0, n = 0;
+    for(const i of this.PTS){
+      if(p.pt[i] && prev[i]){ sum += Math.hypot(p.pt[i].x - prev[i].x, p.pt[i].y - prev[i].y); n++; }
+    }
+    return n ? (sum / n) / p.tor : 0;
+  },
+
+  /* ポーズが できているか。true / false / null（見えていなくて わからない） */
+  poseOk(id, p, sl){
+    const P = p.pt, T = p.tor;
+    const has = (...ids) => ids.every(i => P[i]);
+    const d = (a,b) => Math.hypot(P[a].x - P[b].x, P[a].y - P[b].y);
+    switch(id){
+      case 'banzai':
+        if(!has(0,15,16)) return null;
+        return P[15].y < P[0].y - 0.55*T && P[16].y < P[0].y - 0.55*T;
+      case 'plane': {
+        if(!has(11,12,15,16)) return null;
+        const side = (s,w) => Math.abs(P[w].y - P[s].y) < 0.35*T && Math.abs(P[w].x - P[s].x) > 0.75*T;
+        return side(11,15) && side(12,16);
+      }
+      case 'head':
+        if(!has(0,15,16)) return null;
+        return [15,16].every(w => P[w].y > P[0].y - 0.5*T && P[w].y < P[0].y + 0.1*T
+                                  && Math.abs(P[w].x - P[0].x) < 0.55*T);
+      case 'hips': {
+        if(!has(11,12,13,14,15,16,23,24)) return null;
+        const cx = (P[11].x + P[12].x)/2;
+        // ひじが 肩より 外に はりだし、手首は ひじより 内がわ（手を おろしているだけ と 区別する）
+        const ax = i => Math.abs(P[i].x - cx);
+        const bent = (s,e,w) => ax(e) > ax(s) + 0.3*T && ax(e) - ax(w) > 0.2*T;
+        return d(15,23) < 0.45*T && d(16,24) < 0.45*T && bent(11,13,15) && bent(12,14,16);
+      }
+      case 'flam':
+        if(!has(27,28)) return null;
+        return Math.abs(P[27].y - P[28].y) > 0.35*T;
+      case 'squat': {
+        if(!has(23,24,27,28) || !sl.legMax) return null;
+        const leg = (P[27].y + P[28].y)/2 - (P[23].y + P[24].y)/2;
+        return leg < sl.legMax * 0.62;
+      }
+    }
+    return null;
+  },
+
+  /* ブロックの 大きさと 位置（地面に いるときだけ 追いかける） */
+  placeBlock(E, sl, p, dt, team){
+    const s = E.s;
+    const B = Math.max(E.H*0.075, Math.min(E.H*0.13, p.test ? E.H*0.11 : p.tor*0.5));
+    let ty;
+    if(p.test) ty = E.H*0.30;
+    else if(s.hit === 1) ty = p.ny - p.tor*0.95 - B/2;                 // 手を のばして とどく 高さ
+    else ty = p.ny - p.tor*(0.35 + s.jump) - B/2;                      // 頭の すぐ上（とべば あたる）
+    ty = Math.max(E.H*0.2 + B/2, ty);
+    const lo = team === 'A' ? B*0.6 : E.divX + B*0.6;
+    const hi = team === 'A' ? E.divX - B*0.6 : E.W - B*0.6;
+    const tx = Math.max(lo, Math.min(hi, p.x));
+    const k = 1 - Math.exp(-dt/0.18);
+    if(sl.bx == null){ sl.bx = tx; sl.by = ty; }
+    sl.bx += (tx - sl.bx) * k;
+    if(!(s.hit === 2 && sl.air)) sl.by += (ty - sl.by) * k;   // とんでいる あいだだけ 止める（とちゅうで「てで」に 変えても 追う）
+    sl.B = B;
+  },
+
+  /* ジャンプ（または 手）の「1回」を 見つける。true＝いま たたいた */
+  detectHit(E, sl, p, dt){
+    const s = E.s;
+    if(s.hit === 0) return false;
+    if(p.test){
+      const up = p.ny < E.H*0.36, down = p.ny > E.H*0.46;
+      if(!sl.air && up){ sl.air = true; return true; }
+      if(sl.air && down) sl.air = false;
+      return false;
+    }
+    if(s.hit === 1){
+      const P = p.pt;
+      const wy = Math.min(P[15] ? P[15].y : Infinity, P[16] ? P[16].y : Infinity);
+      const up = wy < p.ny - 0.25*p.tor, down = wy > p.ny + 0.1*p.tor;
+      if(!sl.armUp && up){ sl.armUp = true; return true; }
+      if(sl.armUp && down) sl.armUp = false;
+      return false;
+    }
+    if(p.hipY == null) return false;
+    if(sl.base == null) sl.base = p.hipY;
+    const rise = (sl.base - p.hipY) / p.tor;
+    if(!sl.air){
+      if(rise > s.jump){ sl.air = true; sl.airT = 0; return true; }
+      sl.base += (p.hipY - sl.base) * (1 - Math.exp(-dt/0.8));     // 地面に いる あいだだけ 基準を 追う
+    }else{
+      sl.airT += dt;
+      if(rise < s.jump*0.4) sl.air = false;
+      else if(sl.airT > 1.5){ sl.air = false; sl.base = p.hipY; }   // 台に のった など。基準を とりなおす
+    }
+    return false;
+  },
+
+  hitBlock(E, team, sl){
+    const st = this.st;
+    sl.cool = this.HIT_COOL; sl.bump = 1; sl.used = 0.35;
+    st.hits[team]++;
+    st.coins.push({ x:sl.bx, y:sl.by - sl.B*0.5, r:sl.B*0.36, t:0 });
+    E.award(team, 1, 'good', sl.bx, sl.by - sl.B*1.3);
+  },
+
+  /* ---------------- 毎フレーム ---------------- */
+  tick(dt, E){
+    if(!this.st) this.reset(E);
+    const st = this.st, s = E.s;
+    for(const t of ['A','B']) st.flash[t] = Math.max(0, st.flash[t] - dt*2);
+    st.caughtT = Math.max(0, st.caughtT - dt);
+
+    // おにの むき（0＝うしろ、1＝こっち）
+    const wantFace = (st.phase === 'freeze' || st.phase === 'endcard') ? 1 : 0;
+    st.face += Math.sign(wantFace - st.face) * Math.min(Math.abs(wantFace - st.face), dt / this.TURN);
+
+    // コインの アニメ
+    for(const c of st.coins) c.t += dt;
+    st.coins = st.coins.filter(c => c.t < 0.8);
+    for(const c of st.drops){ c.t += dt; c.vy += E.H*2.6*dt; c.x += c.vx*dt; c.y += c.vy*dt; }
+    st.drops = st.drops.filter(c => c.t < 1.2);
+    if(st.pose) st.pose.pop = Math.min(1, st.pose.pop + dt*4);
+
+    const canHit = st.phase === 'move' || st.phase === 'warn';
+    const ppl = this.observe(E);
+
+    for(const t of ['A','B']){
+      let mv = null;
+      st.slots[t].forEach((sl, i) => {
+        sl.cool = Math.max(0, sl.cool - dt);
+        sl.bump = Math.max(0, sl.bump - dt*5);
+        sl.used = Math.max(0, sl.used - dt);
+        const p = ppl[t][i];
+        if(!p){ if(sl.on){ sl.on = false; sl.prev = null; sl.air = false; } return; }
+        // 別の人に 入れかわったら（ならびが ずれた）基準を とりなおす
+        if(sl.on && !p.test && Math.abs(p.x - sl.x) > sl.tor * 1.2){
+          Object.assign(sl, this.newSlot());
+        }
+        sl.on = true; sl.x = p.x; sl.ny = p.ny; sl.tor = p.tor;
+        if(!p.test){
+          const m = this.motionOf(sl, p);
+          mv = Math.max(mv ?? 0, m);
+          if(p.pt[23] && p.pt[24] && p.pt[27] && p.pt[28]){
+            const leg = (p.pt[27].y + p.pt[28].y)/2 - (p.pt[23].y + p.pt[24].y)/2;
+            sl.legMax = Math.max(leg, sl.legMax * Math.exp(-dt/20));
+          }
+        }
+        this.placeBlock(E, sl, p, dt, t);
+        const hit = this.detectHit(E, sl, p, dt);
+        if(hit && canHit && sl.cool <= 0) this.hitBlock(E, t, sl);
+      });
+      if(ppl[t][0] && ppl[t][0].test){
+        const p = ppl[t][0], cur = { x:p.x/E.W, y:p.ny/E.H }, tp = st._tp;
+        st._tp = cur;
+        mv = tp ? Math.hypot(cur.x - tp.x, cur.y - tp.y) * 7 : 0;   // ポインタの動き＝体の動きの代わり
+      }
+      st.seen[t] = (mv != null);
+      if(mv == null){ st.sm[t] = 0; st.overT[t] = 0; continue; }
+      st.sm[t] = st.sm[t] * 0.85 + mv * 0.15;
+    }
+
+    // ポーズ ボーナス（うごいて OK の あいだだけ）
+    if(st.pose && canHit){
+      const pz = st.pose;
+      for(const t of ['A','B']){
+        if(pz.done[t]) continue;
+        let ok = false;
+        const card = this.cardRect(E, t);
+        for(const [i, p] of ppl[t].entries()){
+          if(p.test){ ok = ok || (Math.abs(p.x - card.x) < card.w/2 && Math.abs(p.ny - card.y) < card.h/2); continue; }
+          ok = ok || this.poseOk(pz.id, p, st.slots[t][i]) === true;
+        }
+        if(ok){ pz.prog[t] += dt; pz.out[t] = 0; }
+        else {
+          pz.out[t] += dt;
+          if(pz.out[t] > this.POSE_OUT) pz.prog[t] = Math.max(0, pz.prog[t] - dt*2);
+        }
+        if(pz.prog[t] >= this.POSE_HOLD){
+          pz.done[t] = true; st.poses[t]++;
+          E.award(t, this.POSE_PTS, 'bonus', card.x, card.y - card.h*0.2);
+          for(let k=0;k<this.POSE_PTS;k++)
+            st.coins.push({ x:card.x + (k-1)*card.w*0.3, y:card.y - card.h*0.4, r:E.H*0.03, t:-k*0.08 });
+        }
+      }
+    }
+
+    if(st.phase === 'ready'){
+      st.t += dt;
+      if(st.t >= this.READY) this.enterMove(E);
+      return;
+    }
+    if(st.phase === 'endcard'){
+      st.t += dt;
+      if(st.t >= this.ENDCARD) this.enterMove(E);
+      return;
+    }
+    if(st.phase === 'move'){
+      st.t += dt;
+      const len = this.moveLen(E);
+      // 「だるまさんが」を 1もじずつ。音あり の あいずなら 1もじごとに ぽん
+      const n = Math.min(this.CHANT1.length, Math.floor(st.t / len * this.CHANT1.length) + 1);
+      if(n > st.chantN){ st.chantN = n; if(s.signal !== 1) E.beep(523 + n*40, 0.07, 'triangle', 0.07); }
+      if(st.t >= len){
+        st.t = 0;
+        st.phase = s.warn > 0.01 ? 'warn' : 'freeze';
+        if(st.phase === 'freeze') this._enterFreeze(E);
+      }
+      return;
+    }
+    if(st.phase === 'warn'){
+      st.t += dt;
+      const n = this.CHANT1.length + Math.min(this.CHANT2.length, Math.floor(st.t / s.warn * this.CHANT2.length) + 1);
+      if(n > st.chantN){ st.chantN = n; if(s.signal !== 1) E.beep(700 + (n-6)*60, 0.09, 'square', 0.07); }
+      if(st.t >= s.warn){ st.t = 0; st.phase = 'freeze'; this._enterFreeze(E); }
+      return;
+    }
+
+    // phase 'freeze'
+    st.t += dt;
+    const judging = st.t >= this.SETTLE;
+    for(const t of ['A','B']){
+      if(!st.seen[t] || st.failed[t]) { if(!st.seen[t]) st.overT[t] = 0; continue; }
+      if(!judging) continue;
+      if(st.sm[t] > s.tol){
+        st.overT[t] += dt;
+        if(st.overT[t] >= this.OVER_NEED) this._caught(E, t);
+      }else{
+        st.overT[t] = Math.max(0, st.overT[t] - dt*1.5);
+      }
+    }
+
+    if(st.t >= s.freezeDur){
+      // ラウンド終了：止まりきったチームに +1
+      for(const t of ['A','B']){
+        if(st.failed[t] || st.judged[t]) continue;
+        if(!st.seen[t]){ st.res[t] = 'none'; continue; }   // 見えていない＝ノーカウント
+        st.judged[t] = true;
+        st.ok[t]++; st.combo[t]++; st.best[t] = Math.max(st.best[t], st.combo[t]);
+        st.res[t] = 'ok';
+        const x = t === 'A' ? E.W*0.25 : E.W*0.75;
+        E.award(t, 1, 'good', x, E.H*0.55);
+        if(st.combo[t] % 3 === 0) E.award(t, 1, 'bonus', x, E.H*0.47);
+      }
+      st.round++;
+      st.phase = 'endcard'; st.t = 0;
+      st.failed = {A:false, B:false}; st.judged = {A:false, B:false};
+      st.overT = {A:0, B:0};
+      E.beep(920, 0.14, 'square', 0.09);
+    }
+  },
+
+  _enterFreeze(E){
+    const st = this.st, s = E.s;
+    st.overT = {A:0, B:0}; st.pose = null; st.chantN = 0;
+    if(s.signal !== 1) E.beep(200, 0.32, 'sawtooth', 0.18);   // おに＋文字＋音／音だけ は ブザー
+    else E.beep(430, 0.12, 'sine', 0.10);                     // おにを 見るだけ は 小さい音
+  },
+
+  _caught(E, t){
+    const st = this.st, s = E.s;
+    st.failed[t] = true; st.judged[t] = true;
+    st.combo[t] = 0; st.moved[t]++; st.res[t] = 'moved';
+    st.flash[t] = 1; st.caughtBy = t; st.caughtT = 1.2;
+    E.miss(t);
+    const x = t === 'A' ? E.W*0.25 : E.W*0.75, y = E.H*0.5;
+    const lose = Math.min(s.caught, Math.max(0, E.score[t]));
+    if(lose > 0){
+      E.award(t, -lose, 'bad', x, y);
+      for(let k=0;k<lose;k++)
+        st.drops.push({ x, y, vx:(k - (lose-1)/2) * E.H*0.35 + (t === 'A' ? -1 : 1)*E.H*0.1,
+                        vy:-E.H*0.9, r:E.H*0.03, t:0 });
+    }else{
+      E.beep(160, 0.28, 'sawtooth', 0.16);
+    }
+  },
+
+  cardRect(E, t){
+    const w = E.H*0.21, h = E.H*0.28;
+    return { x: t === 'A' ? Math.max(w*0.6, E.W*0.1) : Math.min(E.W - w*0.6, E.W*0.9), y:E.H*0.42, w, h };
+  },
+  oniPos(E){ return { x:E.divX, y:E.H*0.40, S:E.H*0.17 }; },
+
+  /* ================= 絵（g＝描く先。E.ctx でも サムネイル用の g でも 使う） ================= */
+
+  /* ボクセルテーマ用：小さく 描いて アルファを 2値化 → 拡大して 置く */
+  _spr:{},
+  spr(g, key, R, D, x, y, fn, live){
+    let c = this._spr[key];
+    const fresh = !c;
+    if(!c){ c = this._spr[key] = document.createElement('canvas'); c.width = c.height = R; }
+    if(fresh || live){
+      const q = c.getContext('2d');
+      q.setTransform(1,0,0,1,0,0); q.clearRect(0,0,R,R);
+      fn(q, R/2, R/2, R);
+      const im = q.getImageData(0,0,R,R), a = im.data;
+      for(let i=3;i<a.length;i+=4) a[i] = a[i] >= 110 ? 255 : 0;
+      q.putImageData(im, 0, 0);
+    }
+    const d = Math.max(R, Math.round(D / R) * R);
+    g.save(); g.imageSmoothingEnabled = false;
+    g.drawImage(c, Math.round(x - d/2), Math.round(y - d/2), d, d);
+    g.restore();
+  },
+  /* くっきり：そのまま描く／ボクセル：spr を通す。D＝おおきさ（px） */
+  put(E, key, R, D, x, y, fn, live){
+    if(E.isPixel()) this.spr(E.ctx, key, R, D, x, y, fn, live);
+    else fn(E.ctx, x, y, D);
+  },
+
+  rr(g, x, y, w, h, r){ g.beginPath(); g.roundRect(x, y, w, h, r); },
+
+  starPath(g, x, y, r, inner = 0.48){
+    g.beginPath();
+    for(let i=0;i<10;i++){
+      const a = -Math.PI/2 + i*Math.PI/5, rr = i % 2 ? r*inner : r;
+      g.lineTo(x + Math.cos(a)*rr, y + Math.sin(a)*rr);
+    }
+    g.closePath();
+  },
+
+  /* ブロック。state: 'ready' たたける／'used' たたいた直後／'lock' おにが 見ている */
+  drawBlock(g, x, y, D, state){
+    const r = D*0.16, lw = Math.max(1, D*0.07), h = D/2;
+    g.save();
+    const base = state === 'used' ? ['#c98a4a','#9a5a26'] : state === 'lock' ? ['#9aa3b5','#6a7386'] : ['#ffe066','#f2a516'];
+    const grd = g.createLinearGradient(0, y-h, 0, y+h);
+    grd.addColorStop(0, base[0]); grd.addColorStop(1, base[1]);
+    this.rr(g, x-h, y-h, D, D, r);
+    g.fillStyle = grd; g.fill();
+    g.lineWidth = lw; g.strokeStyle = state === 'lock' ? '#3b4252' : '#6b3500'; g.stroke();
+    // ふちの ひかり
+    g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = lw*0.8;
+    g.beginPath(); g.moveTo(x-h+lw*1.6, y+h-lw*2.2); g.lineTo(x-h+lw*1.6, y-h+lw*1.6); g.lineTo(x+h-lw*2.2, y-h+lw*1.6); g.stroke();
+    // かどの びょう
+    g.fillStyle = state === 'lock' ? '#4a5263' : '#8a4a00';
+    const o = D*0.27, rv = Math.max(1, D*0.055);
+    for(const [dx,dy] of [[-1,-1],[1,-1],[-1,1],[1,1]]){ g.beginPath(); g.arc(x+dx*o, y+dy*o, rv, 0, Math.PI*2); g.fill(); }
+    if(state === 'ready'){
+      this.starPath(g, x, y + D*0.02, D*0.27);
+      g.fillStyle = '#fff8d6'; g.fill();
+      g.lineWidth = lw*0.8; g.strokeStyle = '#b45f00'; g.stroke();
+    }else if(state === 'lock'){
+      g.fillStyle = '#2d3342';
+      g.fillRect(x - D*0.16, y - D*0.02, D*0.32, D*0.22);
+      g.lineWidth = lw; g.strokeStyle = '#2d3342';
+      g.beginPath(); g.arc(x, y - D*0.04, D*0.1, Math.PI, 0); g.stroke();
+    }
+    g.restore();
+  },
+
+  /* コイン。spin＝回転の 位相 */
+  drawCoin(g, x, y, r, spin){
+    const k = Math.max(0.18, Math.abs(Math.cos(spin)));
+    g.save();
+    g.beginPath(); g.ellipse(x, y, r*k, r, 0, 0, Math.PI*2);
+    g.fillStyle = '#f7b500'; g.fill();
+    g.lineWidth = Math.max(1, r*0.16); g.strokeStyle = '#8a5200'; g.stroke();
+    g.beginPath(); g.ellipse(x, y, r*k*0.68, r*0.7, 0, 0, Math.PI*2);
+    g.fillStyle = '#ffd84a'; g.fill();
+    if(k > 0.45){
+      g.fillStyle = '#fff3b0';
+      g.fillRect(x - r*k*0.14, y - r*0.42, r*k*0.28, r*0.84);
+    }
+    g.restore();
+  },
+
+  drawCloud(g, x, y, s){
+    g.save(); g.fillStyle = 'rgba(255,255,255,.92)';
+    for(const [dx,dy,rr] of [[-0.55,0.1,0.32],[-0.15,-0.12,0.42],[0.3,-0.02,0.36],[0.65,0.14,0.26],[0.05,0.16,0.34]]){
+      g.beginPath(); g.arc(x+dx*s, y+dy*s, rr*s, 0, Math.PI*2); g.fill();
+    }
+    g.restore();
+  },
+
+  /* 地面（くさ＋つち）。top＝くさの 上はし */
+  drawGround(g, W, H, top, now){
+    g.save();
+    const grd = g.createLinearGradient(0, top, 0, H);
+    grd.addColorStop(0, '#8a5a2b'); grd.addColorStop(1, '#5e3a17');
+    g.fillStyle = grd; g.fillRect(0, top + H*0.02, W, H - top);
+    g.fillStyle = '#5cc93b'; g.fillRect(0, top, W, H*0.03);
+    g.fillStyle = '#3e9a26'; g.fillRect(0, top + H*0.03, W, H*0.008);
+    const bw = H*0.05;
+    g.fillStyle = '#5cc93b';
+    for(let x = 0; x < W + bw; x += bw){ g.beginPath(); g.arc(x, top + H*0.004, bw*0.5, Math.PI, 0); g.fill(); }
+    g.fillStyle = 'rgba(0,0,0,.18)';
+    for(let x = bw*0.4; x < W; x += bw*1.7){ g.fillRect(x, top + H*0.06, H*0.012, H*0.012); g.fillRect(x + bw*0.8, top + H*0.1, H*0.01, H*0.01); }
+    g.restore();
+  },
+
+  /* おに（うき島の 上）。face 0＝うしろ 1＝こっち。look −1〜1＝目の むき */
+  drawOni(g, x, y, D, face, now, o){
+    const S = D*0.5;                 // あたまの 直径
+    y -= S*0.27;                     // つの〜うき島を まんなかに おさめる
+    const front = face > 0.5;
+    const sx = Math.max(0.08, Math.abs(Math.cos(face*Math.PI)));
+    const lw = Math.max(1, S*0.05);
+    const ink = '#4a1410';
+    g.save();
+    // うき島
+    const iy = y + S*0.78;
+    g.beginPath(); g.moveTo(x - S*0.95, iy); g.quadraticCurveTo(x, iy + S*0.95, x + S*0.95, iy); g.closePath();
+    g.fillStyle = '#8a5a2b'; g.fill(); g.lineWidth = lw; g.strokeStyle = '#3d2410'; g.stroke();
+    this.rr(g, x - S*1.0, iy - S*0.14, S*2.0, S*0.2, S*0.1);
+    g.fillStyle = '#5cc93b'; g.fill(); g.strokeStyle = '#1f5e12'; g.stroke();
+
+    g.translate(x, 0); g.scale(sx, 1); g.translate(-x, 0);
+    if(o.wob) { g.translate(x, y); g.rotate(o.wob); g.translate(-x, -y); }
+
+    // からだ
+    const by = y + S*0.42;
+    this.rr(g, x - S*0.34, by, S*0.68, S*0.36, S*0.14);
+    g.fillStyle = '#e8433a'; g.fill(); g.lineWidth = lw; g.strokeStyle = ink; g.stroke();
+    // とらがらの パンツ
+    this.rr(g, x - S*0.34, by + S*0.2, S*0.68, S*0.16, S*0.06);
+    g.fillStyle = '#ffd23f'; g.fill(); g.stroke();
+    g.fillStyle = '#2a1a10';
+    for(let k=-2;k<=2;k++) g.fillRect(x + k*S*0.13 - S*0.025, by + S*0.21, S*0.05, S*0.14);
+
+    // つの
+    for(const sgn of [-1,1]){
+      g.beginPath();
+      g.moveTo(x + sgn*S*0.18, y - S*0.36); g.lineTo(x + sgn*S*0.3, y - S*0.72); g.lineTo(x + sgn*S*0.38, y - S*0.28);
+      g.closePath(); g.fillStyle = '#fff2b0'; g.fill(); g.lineWidth = lw; g.strokeStyle = '#7a5a00'; g.stroke();
+    }
+    // あたま
+    const hg = g.createRadialGradient(x - S*0.12, y - S*0.14, S*0.05, x, y, S*0.55);
+    hg.addColorStop(0, '#ff7a5f'); hg.addColorStop(1, '#d4362c');
+    g.beginPath(); g.arc(x, y, S*0.5, 0, Math.PI*2); g.fillStyle = hg; g.fill();
+    g.lineWidth = lw; g.strokeStyle = ink; g.stroke();
+
+    if(front){
+      // かみ（ちょこんと）
+      g.fillStyle = '#3b2a5a';
+      for(const [dx,rr] of [[-0.14,0.13],[0,0.15],[0.14,0.13]]){ g.beginPath(); g.arc(x + dx*S, y - S*0.44, rr*S, 0, Math.PI*2); g.fill(); }
+      // まゆ
+      g.strokeStyle = '#2a1030'; g.lineWidth = S*0.07; g.lineCap = 'round';
+      const ang = o.angry ? 0.14 : -0.04;
+      for(const sgn of [-1,1]){
+        g.beginPath(); g.moveTo(x + sgn*S*0.08, y - S*0.18 + ang*S); g.lineTo(x + sgn*S*0.3, y - S*0.22 - ang*S*0.6); g.stroke();
+      }
+      // め
+      const blink = o.blink ? 0.15 : 1;
+      for(const sgn of [-1,1]){
+        const ex = x + sgn*S*0.18, ey = y - S*0.02;
+        g.beginPath(); g.ellipse(ex, ey, S*0.12, S*0.15*blink, 0, 0, Math.PI*2);
+        g.fillStyle = '#fff'; g.fill(); g.lineWidth = lw*0.8; g.strokeStyle = ink; g.stroke();
+        if(blink > 0.5){
+          const lx = (o.look || 0) * S*0.05;
+          g.beginPath(); g.arc(ex + lx, ey + S*0.02, S*0.065, 0, Math.PI*2); g.fillStyle = '#1a1020'; g.fill();
+          g.beginPath(); g.arc(ex + lx - S*0.02, ey - S*0.01, S*0.022, 0, Math.PI*2); g.fillStyle = '#fff'; g.fill();
+        }
+      }
+      // ほっぺ
+      g.fillStyle = 'rgba(255,160,170,.75)';
+      for(const sgn of [-1,1]){ g.beginPath(); g.ellipse(x + sgn*S*0.33, y + S*0.16, S*0.08, S*0.05, 0, 0, Math.PI*2); g.fill(); }
+      // くち（きば つき）
+      g.beginPath();
+      if(o.shout){ g.ellipse(x, y + S*0.24, S*0.12, S*0.09, 0, 0, Math.PI*2); }
+      else { g.moveTo(x - S*0.16, y + S*0.2); g.quadraticCurveTo(x, y + S*0.36, x + S*0.16, y + S*0.2); g.closePath(); }
+      g.fillStyle = '#5a1018'; g.fill(); g.lineWidth = lw*0.8; g.strokeStyle = ink; g.stroke();
+      g.fillStyle = '#fff';
+      g.beginPath(); g.moveTo(x - S*0.12, y + S*0.2); g.lineTo(x - S*0.08, y + S*0.29); g.lineTo(x - S*0.04, y + S*0.21); g.fill();
+      g.beginPath(); g.moveTo(x + S*0.12, y + S*0.2); g.lineTo(x + S*0.08, y + S*0.29); g.lineTo(x + S*0.04, y + S*0.21); g.fill();
+    }else{
+      // うしろあたま：もじゃもじゃの かみ
+      g.fillStyle = '#3b2a5a';
+      g.beginPath(); g.arc(x, y - S*0.06, S*0.47, Math.PI, Math.PI*2); g.fill();
+      for(const [dx,dy,rr] of [[-0.32,-0.06,0.11],[-0.11,-0.02,0.12],[0.11,-0.02,0.12],[0.32,-0.06,0.11]]){
+        g.beginPath(); g.arc(x + dx*S, y + dy*S, rr*S, 0, Math.PI*2); g.fill();
+      }
+      g.strokeStyle = 'rgba(255,255,255,.25)'; g.lineWidth = lw*0.8;
+      g.beginPath(); g.arc(x - S*0.12, y - S*0.18, S*0.16, Math.PI*1.1, Math.PI*1.7); g.stroke();
+      // 目を かくす うで
+      g.fillStyle = '#e8433a'; g.strokeStyle = ink; g.lineWidth = lw;
+      for(const sgn of [-1,1]){
+        g.beginPath(); g.ellipse(x + sgn*S*0.47, y + S*0.12, S*0.09, S*0.15, sgn*0.5, 0, Math.PI*2); g.fill(); g.stroke();
+      }
+    }
+    g.restore();
+  },
+
+  /* ポーズ カードの 棒人間（見本）。画面で 見たままの 向き */
+  drawFigure(g, x, y, D, id, col){
+    const u = D*0.33;
+    y += u*0.17;                     // ばんざいの 手〜足を まんなかに
+    const P = (px, py) => [x + px*u, y + py*u];
+    let head = [0,-0.92], shY = -0.62, hipY = 0.05;
+    let arm = [[-0.55,-0.3],[-0.62,0.02]];                      // ひじ, 手首（画面の 左がわ）
+    let armR = null;
+    let legL = [[-0.18,0.5],[-0.2,0.98]], legR = null;
+    if(id === 'banzai') arm = [[-0.42,-0.98],[-0.5,-1.32]];
+    if(id === 'plane')  arm = [[-0.62,-0.62],[-0.98,-0.62]];
+    if(id === 'head')   arm = [[-0.6,-0.98],[-0.14,-1.16]];
+    if(id === 'hips')   arm = [[-0.62,-0.3],[-0.2,0.02]];
+    if(id === 'flam'){ arm = [[-0.62,-0.55],[-0.95,-0.45]]; legR = [[0.34,0.36],[0.12,0.62]]; }
+    if(id === 'squat'){ head = [0,-0.45]; shY = -0.15; hipY = 0.5;
+      arm = [[-0.4,0.0],[-0.12,0.08]]; legL = [[-0.45,0.6],[-0.25,0.98]]; }
+    const mir = ([a,b]) => [-a, b];
+    armR = armR || arm.map(mir);
+    legR = legR || legL.map(mir);
+    g.save();
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    for(const [w, c] of [[D*0.13, '#1a1a2e'], [D*0.075, col]]){
+      g.strokeStyle = c; g.lineWidth = w;
+      g.beginPath();
+      g.moveTo(...P(0, shY - 0.08)); g.lineTo(...P(0, hipY));
+      g.moveTo(...P(-0.28, shY)); g.lineTo(...P(0.28, shY));
+      g.moveTo(...P(-0.28, shY)); g.lineTo(...P(...arm[0])); g.lineTo(...P(...arm[1]));
+      g.moveTo(...P(0.28, shY)); g.lineTo(...P(...armR[0])); g.lineTo(...P(...armR[1]));
+      g.moveTo(...P(-0.16, hipY)); g.lineTo(...P(0.16, hipY));
+      g.moveTo(...P(-0.16, hipY)); g.lineTo(...P(...legL[0])); g.lineTo(...P(...legL[1]));
+      g.moveTo(...P(0.16, hipY)); g.lineTo(...P(...legR[0])); g.lineTo(...P(...legR[1]));
+      g.stroke();
+      g.beginPath(); g.arc(...P(...head), u*0.3 + (c === col ? 0 : D*0.03), 0, Math.PI*2);
+      g.fillStyle = c; g.fill();
+    }
+    g.restore();
+  },
+
+  /* ふちどり文字（太い ふち＋影） */
+  text(E, s, x, y, size, fill, stroke = '#1a1030'){
+    const ctx = E.ctx;
+    ctx.save();
+    ctx.font = `${E.isPixel() ? '' : '900 '}${Math.round(size)}px ${E.font()}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round'; ctx.miterLimit = 2;
+    ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = size*0.28;
+    ctx.strokeText(s, x + size*0.05, y + size*0.07);
+    ctx.strokeStyle = stroke; ctx.lineWidth = size*0.22; ctx.strokeText(s, x, y);
+    ctx.fillStyle = fill; ctx.fillText(s, x, y);
+    ctx.restore();
+  },
+
+  pill(E, x, y, w, h, fill, edge){
+    const ctx = E.ctx;
+    ctx.save();
+    if(E.isPixel()){
+      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(Math.round(x-w/2+4), Math.round(y-h/2+4), Math.round(w), Math.round(h));
+      ctx.fillStyle = fill; ctx.fillRect(Math.round(x-w/2), Math.round(y-h/2), Math.round(w), Math.round(h));
+      E.pxRect(Math.round(x-w/2), Math.round(y-h/2), Math.round(w), Math.round(h), edge, Math.max(3, Math.round(h*0.08)));
+    }else{
+      this.rr(ctx, x-w/2, y-h/2 + h*0.08, w, h, h/2); ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fill();
+      this.rr(ctx, x-w/2, y-h/2, w, h, h/2); ctx.fillStyle = fill; ctx.fill();
+      ctx.lineWidth = Math.max(2, h*0.08); ctx.strokeStyle = edge; ctx.stroke();
+    }
+    ctx.restore();
+  },
+
+  /* ---------------- 描画 ---------------- */
+  render(now, E){
+    if(!this.st) this.reset(E);
+    const st = this.st, ctx = E.ctx, s = E.s, pixel = E.isPixel();
+    const freezing = st.phase === 'freeze';
+    const W = E.W, H = E.H;
+
+    // そら（上から うすく）と くも
+    ctx.save();
+    if(pixel){
+      const bands = 6;
+      for(let i=0;i<bands;i++){
+        ctx.fillStyle = `rgba(92,176,255,${0.42*(1 - i/bands)})`;
+        ctx.fillRect(0, Math.round(i*H*0.07), W, Math.ceil(H*0.07));
+      }
+    }else{
+      const sky = ctx.createLinearGradient(0, 0, 0, H*0.48);
+      sky.addColorStop(0, 'rgba(92,176,255,.55)'); sky.addColorStop(1, 'rgba(92,176,255,0)');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H*0.48);
+    }
+    ctx.restore();
+    const drift = (now/1000) * H*0.02;
+    for(const [k, cy, sz] of [[0.1, 0.22, 0.09], [0.47, 0.12, 0.07], [0.8, 0.25, 0.1]]){
+      const cx = ((k*W + drift*(1 + k)) % (W + H*0.3)) - H*0.15;
+      ctx.save(); ctx.globalAlpha = 0.55;
+      this.put(E, 'cloud', 24, H*sz*2.2, cx, H*cy, (g,x,y,D) => this.drawCloud(g, x, y, D*0.42));
+      ctx.restore();
+    }
+
+    // じめん
+    if(pixel){
+      const u = Math.max(4, Math.round(H/90)), top = Math.round(H*0.93 / u) * u;
+      for(let x = 0; x < W; x += u*4){
+        ctx.fillStyle = '#5cc93b'; ctx.fillRect(x, top, u*4, u*2);
+        ctx.fillStyle = '#3e9a26'; ctx.fillRect(x, top + u*2, u*4, u);
+        ctx.fillStyle = (x/u/4) % 2 ? '#8a5a2b' : '#7a4c22'; ctx.fillRect(x, top + u*3, u*4, H - top);
+        ctx.fillStyle = '#5cc93b'; ctx.fillRect(x + u, top - u, u*2, u);
+      }
+    }else{
+      this.drawGround(ctx, W, H, H*0.93, now);
+    }
+
+    // おに
+    const op = this.oniPos(E);
+    const hidden = s.signal === 2;
+    const caughtLook = st.caughtT > 0 ? (st.caughtBy === 'A' ? -1 : 1) : null;
+    const oo = {
+      look: caughtLook ?? Math.sin(now/380),
+      angry: freezing,
+      shout: st.caughtT > 0,
+      blink: !freezing && (now % 3200) < 140,
+      wob: st.phase === 'warn' ? Math.sin(now/70) * 0.05 : 0,
+    };
+    const bob = Math.sin(now/600) * H*0.006;
+    if(!hidden) this.put(E, 'oni', 64, op.S*2.3, op.x, op.y + bob, (g,x,y,D) => this.drawOni(g, x, y, D*0.87, st.face, now, oo), true);
+    if(hidden){
+      // 音だけ：おには くもの なか（ふりむいても 見えない）
+      ctx.save(); ctx.globalAlpha = 0.97;
+      this.put(E, 'bigcloud', 32, op.S*2.4, op.x, op.y + op.S*0.1, (g,x,y,D) => this.drawCloud(g, x, y, D*0.34));
+      ctx.restore();
+      this.text(E, '？', op.x, op.y + op.S*0.05, op.S*0.4, '#9aa3b5');
+    }
+
+    // かけごえ（だるまさんが ころんだ）
+    if(!hidden && s.signal !== 1 && (st.phase === 'move' || st.phase === 'warn') && st.chantN > 0){
+      const all = this.CHANT1 + this.CHANT2;
+      const fs = H*0.052, gap = fs*1.02, n = st.chantN;
+      const total = all.length * gap;
+      const bx = op.x, byy = op.y + op.S*1.28;
+      this.pill(E, bx, byy, total + fs*0.8, fs*1.5, 'rgba(255,255,255,.92)', '#1a1030');
+      const cols = ['#e8433a','#f29d1f','#e0b800','#3eae3e','#2f8be0','#8a5ad8'];
+      for(let i=0;i<n;i++){
+        const ch = all[i];
+        const last = i === n - 1;
+        const cx = bx - total/2 + gap*(i + 0.5);
+        const hop = last ? -fs*0.12 : 0;
+        ctx.save();
+        ctx.font = `${pixel ? '' : '900 '}${Math.round(fs*(last ? 1.15 : 1))}px ${E.font()}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = i >= this.CHANT1.length ? '#d6423c' : cols[i % cols.length];
+        ctx.fillText(ch, cx, byy + hop);
+        ctx.restore();
+      }
+    }
+
+    // 「とまれ」の ふち（音だけ のときは 出さない）
+    if(freezing && s.signal !== 2){
+      const k = 0.22 + Math.sin(now/160)*0.05;
+      ctx.save();
+      const g = ctx.createLinearGradient(0,0,0,H);
+      g.addColorStop(0, `rgba(214,66,60,${k})`); g.addColorStop(0.5, 'rgba(214,66,60,0)');
+      g.addColorStop(1, `rgba(214,66,60,${k})`);
+      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle = `rgba(214,66,60,${k})`;
+      ctx.fillRect(0,0,W*0.025,H); ctx.fillRect(W*0.975,0,W*0.025,H);
+      ctx.restore();
+    }
+
+    // ブロックと コイン
+    if(s.hit > 0){
+      for(const t of ['A','B']) for(const sl of st.slots[t]){
+        if(!sl.on || sl.bx == null) continue;
+        const state = freezing || st.phase === 'endcard' ? 'lock' : sl.used > 0 ? 'used' : 'ready';
+        const bump = Math.sin(Math.min(1, 1 - sl.bump) * Math.PI) * sl.B * 0.28 * (sl.bump > 0 ? 1 : 0);
+        const sq = 1 + (sl.bump > 0 ? Math.sin((1 - sl.bump)*Math.PI) * 0.08 : 0);
+        ctx.save();
+        ctx.translate(sl.bx, sl.by - bump); ctx.scale(sq, 2 - sq); ctx.translate(-sl.bx, -(sl.by - bump));
+        this.put(E, 'blk_' + state, 20, sl.B, sl.bx, sl.by - bump, (g,x,y,D) => this.drawBlock(g, x, y, D*0.95, state));
+        ctx.restore();
+        // たたける ときは ひかる
+        if(state === 'ready'){
+          if(pixel){
+            // ボクセル：かどで またたく ドットの きらめき
+            const u = Math.max(3, Math.round(sl.B/10)), on = Math.floor(now/220) % 4;
+            const cs = [[-1,-1],[1,-1],[1,1],[-1,1]][on], o = sl.B*0.62;
+            const kx = Math.round(sl.bx + cs[0]*o), ky = Math.round(sl.by + cs[1]*o);
+            ctx.fillStyle = '#fff6b0';
+            ctx.fillRect(kx - u/2, ky - u*1.5, u, u*3); ctx.fillRect(kx - u*1.5, ky - u/2, u*3, u);
+          }else{
+            ctx.save(); ctx.globalAlpha = 0.35 + 0.25*Math.sin(now/180);
+            ctx.strokeStyle = '#fff6b0'; ctx.lineWidth = sl.B*0.06;
+            this.rr(ctx, sl.bx - sl.B*0.58, sl.by - sl.B*0.58, sl.B*1.16, sl.B*1.16, sl.B*0.2); ctx.stroke();
+            ctx.restore();
+          }
+        }
+      }
+    }
+    for(const c of st.coins){
+      if(c.t < 0) continue;
+      const k = c.t / 0.8;
+      const y = c.y - Math.sin(Math.min(1, k*1.6) * Math.PI/2) * c.r*4.2 + Math.max(0, k - 0.6)*c.r*3;
+      ctx.save(); ctx.globalAlpha = k > 0.75 ? Math.max(0, 1 - (k - 0.75)*4) : 1;
+      const spin = c.t * 18;
+      this.put(E, 'coin' + (Math.floor(spin / (Math.PI/4)) % 4), 16, c.r*2, c.x, y,
+               (g,x,y2,D) => this.drawCoin(g, x, y2, D*0.46, Math.floor(spin / (Math.PI/4)) * Math.PI/4));
+      if(k > 0.35 && k < 0.6){
+        ctx.fillStyle = '#fffbe0';
+        this.starPath(ctx, c.x + c.r*1.3, y - c.r*0.9, c.r*0.45*(1 - Math.abs(k - 0.47)*8), 0.35); ctx.fill();
+      }
+      ctx.restore();
+    }
+    for(const c of st.drops){
+      ctx.save(); ctx.globalAlpha = Math.max(0, 1 - c.t/1.2);
+      this.put(E, 'coin0', 16, c.r*2, c.x, c.y, (g,x,y,D) => this.drawCoin(g, x, y, D*0.46, 0));
+      ctx.restore();
+    }
+
+    // ポーズ カード
+    if(st.pose){
+      const pz = st.pose;
+      for(const t of ['A','B']){
+        const cr = this.cardRect(E, t);
+        const pop = 1 - Math.pow(1 - pz.pop, 3);
+        const wob = Math.sin(now/260 + (t === 'A' ? 0 : 1.5)) * 0.03;
+        ctx.save();
+        ctx.translate(cr.x, cr.y); ctx.rotate(wob); ctx.scale(pop, pop); ctx.translate(-cr.x, -cr.y);
+        const x0 = cr.x - cr.w/2, y0 = cr.y - cr.h/2;
+        if(pixel){
+          ctx.fillStyle = 'rgba(0,0,0,.4)'; ctx.fillRect(x0 + 6, y0 + 6, cr.w, cr.h);
+          ctx.fillStyle = pz.done[t] ? '#fff2b0' : '#fffaf0'; ctx.fillRect(x0, y0, cr.w, cr.h);
+          E.pxRect(x0, y0, cr.w, cr.h, '#f2a516', Math.max(4, Math.round(H*0.008)));
+        }else{
+          this.rr(ctx, x0, y0 + H*0.008, cr.w, cr.h, cr.w*0.12); ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.fill();
+          this.rr(ctx, x0, y0, cr.w, cr.h, cr.w*0.12);
+          ctx.fillStyle = pz.done[t] ? '#fff2b0' : '#fffaf0'; ctx.fill();
+          ctx.lineWidth = H*0.008; ctx.strokeStyle = '#f2a516'; ctx.stroke();
+        }
+        // あたま：「ボーナス」リボン
+        this.pill(E, cr.x, y0, cr.w*0.86, H*0.045, '#e8433a', '#7a1410');
+        this.text(E, `ポーズで +${this.POSE_PTS}`, cr.x, y0, H*0.026, '#fff', '#7a1410');
+        this.put(E, 'fig_' + pz.id + t, 32, cr.h*0.58, cr.x, cr.y + cr.h*0.0,
+                 (g,x,y,D) => this.drawFigure(g, x, y, D*0.9, pz.id, t === 'A' ? '#4a7fe0' : '#d6423c'));
+        this.text(E, pz.name, cr.x, y0 + cr.h*0.86, H*0.032, '#1a1030', '#ffffff');
+        // たもっている あいだの ゲージ
+        const r = Math.min(1, pz.prog[t] / this.POSE_HOLD);
+        if(r > 0 && !pz.done[t]){
+          ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(x0 + cr.w*0.1, y0 + cr.h*0.72, cr.w*0.8, H*0.014);
+          ctx.fillStyle = '#3eae3e'; ctx.fillRect(x0 + cr.w*0.1, y0 + cr.h*0.72, cr.w*0.8*r, H*0.014);
+        }
+        if(pz.done[t]){
+          ctx.save(); ctx.translate(cr.x, cr.y); ctx.rotate(-0.25);
+          this.text(E, 'できた！', 0, 0, H*0.05, '#ffd84a', '#7a3a00');
+          ctx.restore();
+        }
+        ctx.restore();
+      }
+    }
+
+    // 中央の 大きな あいず
+    let big = '', col = '#fff', bsz = H*0.085;
+    if(st.phase === 'ready'){ big = 'よーい'; col = '#ffd84a'; }
+    else if(freezing){
+      if(s.signal === 0){ big = 'とまれ！'; col = '#ff7a72'; bsz = H*0.1; }
+      else if(s.signal === 2 && st.t < this.SETTLE + 0.4){ big = '♪'; col = '#c8c8d2'; }
+    }else if(st.phase === 'endcard'){
+      const anyOk = st.res.A === 'ok' || st.res.B === 'ok';
+      big = anyOk ? 'ぴたっ！' : 'つぎは とまれるよ'; col = anyOk ? '#ffd84a' : '#e6e6f0';
+      if(!anyOk) bsz = H*0.06;
+    }
+    if(big){
+      const pulse = freezing ? 1 + Math.max(0, 0.25 - st.t)*1.2 : 1;
+      this.text(E, big, W/2, H*0.7, bsz*pulse, col);
+    }
+    if(st.caughtT > 0 && !hidden){
+      const sx = op.x + (st.caughtBy === 'A' ? -1 : 1)*op.S*1.25;
+      this.pill(E, sx, op.y - op.S*0.35, H*0.26, H*0.07, '#fff', '#1a1030');
+      this.text(E, 'みーつけた！', sx, op.y - op.S*0.35, H*0.034, '#e8433a', '#fff');
+    }
+
+    // チームごとの ようす
+    for(const team of ['A','B']){
+      const cx = team === 'A' ? E.divX*0.5 : E.divX + (W - E.divX)*0.5;
+      const by = H*0.86;
+      let msg = '', mc = '#fff', edge = 'rgba(255,255,255,.5)';
+      if(!st.seen[team] && st.phase !== 'ready' && st.phase !== 'endcard'){ msg = 'カメラに うつってね'; mc = '#ffd84a'; }
+      else if(freezing && st.t >= this.SETTLE){
+        if(st.failed[team]){ msg = 'みつかった！'; mc = '#ff9a95'; edge = '#ff7a72'; }
+        else { msg = 'じーっ…'; mc = '#bff5b0'; edge = '#5bbd4a'; }
+      }else if(st.phase === 'move' || st.phase === 'warn'){
+        msg = s.hit === 2 ? 'ジャンプで ブロックを たたこう' : s.hit === 1 ? 'てで ブロックを たたこう' : 'うごいて OK';
+        if(st.pose && !st.pose.done[team]) msg = `「${st.pose.name}」も できるかな`;
+        mc = '#fff'; edge = '#5bbd4a';
+      }else if(st.phase === 'endcard'){
+        msg = st.res[team] === 'ok' ? 'できた！' : st.res[team] === 'moved' ? 'つぎは じっと' : '';
+        mc = st.res[team] === 'ok' ? '#ffd84a' : '#ff9a95';
+      }
+      if(msg){
+        ctx.save();
+        const fs = H*0.034;
+        ctx.font = `${pixel ? '' : '700 '}${Math.round(fs)}px ${E.font()}`;
+        const tw = ctx.measureText(msg).width;
+        ctx.restore();
+        this.pill(E, cx, by, tw + fs*1.6, fs*1.7, 'rgba(16,16,30,.78)', edge);
+        ctx.save();
+        ctx.font = `${pixel ? '' : '700 '}${Math.round(fs)}px ${E.font()}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = mc; ctx.fillText(msg, cx, by);
+        ctx.restore();
+      }
+
+      // どきどき メーター（とまれ 中だけ）
+      if(freezing && st.seen[team] && !st.failed[team]){
+        const mw = W*0.16, mh = H*0.02, mx = cx - mw/2, myy = by - H*0.065;
+        const r = Math.max(0, Math.min(1, st.sm[team] / (s.tol * 2.5)));
+        if(pixel){
+          ctx.fillStyle = 'rgba(10,10,14,.75)'; ctx.fillRect(mx, myy, mw, mh);
+          ctx.fillStyle = st.sm[team] > s.tol ? '#ff7a72' : '#5bbd4a'; ctx.fillRect(mx, myy, mw*r, mh);
+          E.pxRect(mx, myy, mw, mh, 'rgba(255,255,255,.5)', 2);
+        }else{
+          this.rr(ctx, mx, myy, mw, mh, mh/2); ctx.fillStyle = 'rgba(10,10,14,.7)'; ctx.fill();
+          if(r > 0.02){ this.rr(ctx, mx, myy, Math.max(mh, mw*r), mh, mh/2);
+            ctx.fillStyle = st.sm[team] > s.tol ? '#ff7a72' : '#5bbd4a'; ctx.fill(); }
+        }
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(mx + mw*(1/2.5) - 1, myy - 3, 3, mh + 6);
+      }
+
+      if(st.flash[team] > 0){
+        ctx.save();
+        ctx.globalAlpha = Math.min(0.45, st.flash[team]);
+        ctx.fillStyle = '#d6423c';
+        ctx.fillRect(team === 'A' ? 0 : E.divX, 0, team === 'A' ? E.divX : W - E.divX, H);
+        ctx.restore();
+      }
+    }
+  },
+
+  hudTotal(){
+    const st = this.st; if(!st) return '';
+    return `ぴたっ ${st.ok.A + st.ok.B}かい`;
+  },
+
+  result(E){
+    const st = this.st || { ok:{A:0,B:0}, moved:{A:0,B:0}, best:{A:0,B:0}, hits:{A:0,B:0}, poses:{A:0,B:0} };
+    const sc = E.score;
+    const coins = sc.A + sc.B, ok = st.ok.A + st.ok.B, best = Math.max(st.best.A, st.best.B);
+    const mv = st.moved.A + st.moved.B, pz = st.poses.A + st.poses.B;
+    const det = t => (E.s.hit > 0 ? `ブロック ${st.hits[t]}かい・` : '') + `ぴたっ ${st.ok[t]}かい`
+                     + (pz ? `・ポーズ ${st.poses[t]}かい` : '');
+    return {
+      title: coins > 0 ? `ふたりで コイン ${coins}まい！` : 'とまれ、ちょうせん しました',
+      color: coins > 0 ? 'var(--gold)' : 'var(--ok)',
+      sub: best >= 3 ? `いちばん つづいた ぴたっは ${best}かい れんぞく`
+                     : (ok > 0 ? `ぴたっと とまれたのは ${ok}かい` : 'つぎも とまれるよ'),
+      cards: [
+        { label:E.cfg.nameA, value:sc.A, detail:det('A') },
+        { label:E.cfg.nameB, value:sc.B, detail:det('B') },
+      ],
+      line: `みつかった ${mv}かい` + (pz ? `　／　ポーズ できた ${pz}かい` : ''),
+    };
+  },
+};
+if(typeof window !== 'undefined') window.__FREEZE = FREEZE_GAME;
+
 /* ★ 新しいゲームはここに足す */
-const GAMES = [STAR_CATCH, SEESAW];
+const GAMES = [STAR_CATCH, SEESAW, FREEZE_GAME];
 
 /* ============================ ランチャー ============================ */
 function defaultsFor(g){

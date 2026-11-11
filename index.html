@@ -171,6 +171,28 @@
   .modes span{color:var(--muted); font-size:12px;}
   .modes button.sel span{color:#dff5db;}
 
+  /* ---------- 設定のタイル（ゲームが groups を持つとき） ---------- */
+  .gtiles{display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:10px; margin-bottom:14px;}
+  .gtile{
+    position:relative; background:var(--panel2); border:0; border-radius:var(--radius); color:var(--ink);
+    cursor:pointer; padding:10px 6px 9px; text-align:center; font-family:inherit; text-shadow:var(--shadow); box-shadow:var(--bev);
+    transition:transform .06s, filter .1s, box-shadow .06s;
+  }
+  .gtile:hover{filter:brightness(1.14);}
+  .gtile:active{box-shadow:var(--bev-in); transform:translateY(3px);}
+  .gtile.sel{background:var(--ok-dk); box-shadow:var(--bev), inset 0 0 0 2px var(--ok);}
+  .gtile canvas{width:72px; height:54px; display:block; margin:0 auto 4px;}
+  :root[data-theme="voxel"] .gtile canvas{image-rendering:pixelated;}
+  .gtile.off canvas{opacity:.35;}
+  .gtile .nm{font-size:13px;}
+  .gtile .vl{font-size:11.5px; color:var(--muted); margin-top:2px;}
+  .gtile.sel .vl{color:#dff5db;}
+  .gtile .dot{position:absolute; top:7px; right:7px; width:8px; height:8px; border-radius:50%; background:var(--gold);}
+  .gpanel{background:var(--slot); border-radius:var(--radius); padding:16px 14px 6px; margin-bottom:16px; box-shadow:var(--bev-in);}
+  .gpanel > *{transition:opacity .15s;}
+  .gpanel.off > :not(.main){opacity:.4;}
+  .gnote{font-size:11.5px; color:var(--muted); margin:-6px 0 14px;}
+
   /* ---------- モンスター ---------- */
   .mons{display:flex; gap:12px; flex-wrap:wrap; margin-top:14px;}
   .mon{
@@ -514,6 +536,7 @@ function cycleTheme(){
   themeIdx = (themeIdx + 1) % THEMES.length;
   applyTheme();
   renderLauncher();     // カードのサムネイルもテーマに合わせて描き直す
+  if(game) syncUI();    // 設定の タイルの 絵も
 }
 $('btnTheme').onclick = cycleTheme;
 $('btnTheme2').onclick = cycleTheme;
@@ -731,6 +754,7 @@ function toggle(host, label, hint, get, set){
   l.append(i, sp); host.appendChild(l);
   i.onchange = () => { set(i.checked); syncUI(); };
   painters.push(() => { i.checked = !!get(); });
+  return l;
 }
 
 /* ============================ エンジン設定のUI ============================
@@ -1779,23 +1803,23 @@ const STAR_CATCH = {
       opts:[['hands','両手だけ'],['hands_feet','手と足'],['all','手・足・頭']], def:'hands' },
     { key:'lucky',   label:'ラッキースター', quick:true,
       hint:'点数が 2〜4点 とばらつく金の星。星に数字が出ます',
-      opts:[[0,'なし'],[0.07,'すこし'],[0.14,'ふつう'],[0.22,'おおい']], def:0.14 },
-    { key:'comeback', label:'ぎゃくてんの しくみ', quick:true,
-      hint:'点差がひらくと、まけている側にだけ高い点のラッキースターが出ます。点数は星に書いてあるので不意打ちにはなりません',
-      opts:[[0,'なし'],[0.6,'ひかえめ'],[1.0,'ふつう'],[1.5,'つよい']], def:1.0 },
+      opts:[[0,'なし'],[0.07,'少し'],[0.14,'ふつう'],[0.22,'多い']], def:0.14 },
+    { key:'comeback', label:'逆転の仕組み', quick:true,
+      hint:'点差がひらくと、負けている側にだけ高い点のラッキースターが出ます。点数は星に書いてあるので不意打ちにはなりません',
+      opts:[[0,'なし'],[0.6,'控えめ'],[1.0,'ふつう'],[1.5,'強い']], def:1.0 },
     { key:'bomb',  type:'toggle', quick:true, label:'TNTを出す', hint:'触ると −1点。1.5秒で消えます。「止まる力」の練習', def:true },
-    { key:'cross', type:'toggle', label:'正中線交差モード', hint:'自陣の左側の的は右手、右側の的は左手でしか取れない。的は手の色になる（ひだり＝きいろ／みぎ＝みどり）', def:false },
+    { key:'cross', type:'toggle', label:'正中線交差モード', hint:'自陣の左側の的は右手、右側の的は左手でしか取れない。的は手の色になる（左＝黄色／右＝緑）', def:false },
   ],
   presets: {
     やさしい:      { desc:'的が大きい・ゆっくり・TNTなし',
       v:{size:0.16, density:1, life:7,   bomb:false, cross:false, parts:'hands', lucky:0.14, comeback:1.0} },
     ふつう:        { desc:'標準。まずはこれから',
       v:{size:0.12, density:2, life:4.5, bomb:true,  cross:false, parts:'hands', lucky:0.14, comeback:1.0} },
-    '大人数で 回す': { desc:'交代を回す日むけ。的は大きめ・ぎゃくてん つよい。誰が入っても点が取れる',
+    '大人数で 回す': { desc:'交代を回す日むけ。的は大きめ・逆転強め。誰が入っても点が取れる',
       v:{size:0.14, density:2, life:6,   bomb:true,  cross:false, parts:'hands', lucky:0.14, comeback:1.5} },
     むずかしい:    { desc:'小さい的・多い・TNT多め',
       v:{size:0.065,density:3, life:3,   bomb:true,  cross:false, parts:'hands_feet', lucky:0.07, comeback:0.6} },
-    正中線チャレンジ:{ desc:'左の的は右手／右の的は左手。きいろ＝ひだり・みどり＝みぎ',
+    正中線チャレンジ:{ desc:'左の的は右手／右の的は左手。黄色＝左・緑＝右',
       v:{size:0.12, density:1, life:6,   bomb:false, cross:true,  parts:'hands', lucky:0.14, comeback:1.0} },
   },
 
@@ -2137,53 +2161,96 @@ const SEESAW = {
   },
 
   settings: [
-    { key:'maxAngle', label:'シーソーの傾き', quick:true,
-      opts:[[15,'15度'],[25,'25度'],[35,'35度'],[45,'45度']], def:25 },
-    { key:'speed', label:'反応の速さ',
-      opts:[[3,'ゆっくり'],[6,'ふつう'],[10,'はやい']], def:6 },
-    { key:'gain', label:'うごきの感度',
-      opts:[[0.7,'ひかえめ'],[1.1,'ふつう'],[1.7,'びんかん']], def:1.1 },
-    { key:'ballR', label:'ボールの大きさ', quick:true,
-      opts:[[0.058,'大'],[0.044,'中'],[0.032,'小']], def:0.044 },
-    { key:'fric', label:'転がりやすさ',
-      opts:[[3.0,'とまりやすい'],[1.6,'ふつう'],[0.7,'よく転がる']], def:1.6 },
-    { key:'basket', label:'かごの大きさ', quick:true,
-      opts:[[0.22,'大'],[0.17,'ふつう'],[0.12,'小']], def:0.17 },
-    { key:'wait', label:'つぎのボールまで',
-      opts:[[5,'5秒'],[4,'4秒'],[3,'3秒'],[2,'2秒']], def:4 },
-    /* 出すものは それぞれ「なし／すこし／ふつう／おおい」。なしに すれば 練習に しぼれる
-       （ボール なし＋とげとげ ＝ とばす れんしゅう、ボール なし＋ばくだん ＝ とどめる れんしゅう）。
+    /* 設定画面は 職員が 操作するので 漢字まじりで 書く（子どもが 見る 画面の 文字は ひらがな中心のまま）。
+       group で タイルに わける（groups は 下）。タイルの 中では「ボール」などを くりかえさない */
+    /* ボール：出すものは それぞれ「なし／少し／ふつう／多い」。なしに すれば 練習に しぼれる
+       （ボール なし＋とげとげ ＝ とばす 練習、ボール なし＋ばくだん ＝ とどめる 練習）。
        ぜんぶ なしの ときは ボールを ふつうで 出す */
-    { key:'balls', label:'かごに いれる ボール', quick:true,
-      opts:[[0,'なし'],[1,'すこし'],[2,'ふつう'],[3,'おおい']], def:2 },
-    { key:'preview', type:'toggle', quick:true, label:'つぎの ボールの よこく',
-      hint:'つぎに 落ちてくる いろを 先に 見せます。見てから しゃがんだまま 待つ子が いたので ふだんは 切っておきます。切ると、出てから 見て うごく 練習になります', def:false },
+    { key:'balls', group:'ball', label:'出す量', quick:true,
+      opts:[[0,'なし'],[1,'少し'],[2,'ふつう'],[3,'多い']], def:2 },
+    { key:'ballR', group:'ball', label:'大きさ', quick:true,
+      opts:[[0.058,'大'],[0.044,'中'],[0.032,'小']], def:0.044 },
+    { key:'fric', group:'ball', label:'転がりやすさ',
+      opts:[[3.0,'止まりやすい'],[1.6,'ふつう'],[0.7,'よく転がる']], def:1.6 },
     /* ばくだん：どちらの かごにも 入れては いけない。シーソーの 上で とめると かいじょ。
-       すこし＝2ふくろに 1こ・ふつう＝1ふくろに 1こ（ボール ふつうで 約20%）・おおい＝1ふくろに 2こ。
+       少し＝2ふくろに 1こ・ふつう＝1ふくろに 1こ（ボール ふつうで 約20%）・多い＝1ふくろに 2こ。
        もとは オンオフ（bomb: true/false）だったので、古い 設定ファイルの bomb は bombsOf() で 読みかえる */
-    { key:'bombs', label:'ばくだんボール', quick:true,
-      opts:[[0,'なし'],[1,'すこし'],[2,'ふつう'],[3,'おおい']], def:2 },
-    { key:'holdSec', label:'ばくだんをとめる時間', quick:true,
+    { key:'bombs', group:'bomb', label:'出す量', quick:true,
+      opts:[[0,'なし'],[1,'少し'],[2,'ふつう'],[3,'多い']], def:2 },
+    { key:'holdSec', group:'bomb', label:'止めて解除する時間', quick:true,
       opts:[[2,'2秒'],[3,'3秒'],[4,'4秒'],[6,'6秒']], def:3 },
     /* とげとげボール：じぶんの いろの かべ（あお＝左・あか＝右）に とばすと はじけて +1。
        かごに 入れる ボールとは ちがう「いきおいよく 立つ」課題。0 のときは かべを 置かない */
-    { key:'toge', label:'とげとげボール', quick:true,
-      opts:[[0,'なし'],[1,'すこし'],[2,'ふつう'],[3,'おおい']], def:0 },
-    { key:'fly', label:'とげとげの とびやすさ', quick:true,
-      opts:[[1.0,'ふつう'],[1.4,'よく とぶ'],[1.9,'すごく とぶ']], def:1.0 },
-    { key:'togeLife', label:'とげとげの のこる じかん',
-      opts:[[0,'ずっと'],[10,'ながい'],[6,'みじかい']], def:0 },
-    { key:'wallTgt', label:'とげとげの まと', quick:true,
+    { key:'toge', group:'toge', label:'出す量', quick:true,
+      opts:[[0,'なし'],[1,'少し'],[2,'ふつう'],[3,'多い']], def:0 },
+    { key:'fly', group:'toge', label:'飛びやすさ', quick:true,
+      opts:[[1.0,'ふつう'],[1.4,'よく飛ぶ'],[1.9,'すごく飛ぶ']], def:1.0 },
+    { key:'togeLife', group:'toge', label:'残る時間',
+      opts:[[0,'消えない'],[10,'長い（10秒）'],[6,'短い（6秒）']], def:0 },
+    { key:'wallTgt', group:'toge', label:'壁の的', quick:true,
       opts:[[0,'なし'],[0.12,'大きい'],[0.08,'ふつう'],[0.05,'小さい']], def:0 },
-    { key:'marker', type:'toggle', label:'頭の位置を表示する',
+    { key:'basket', group:'kago', label:'大きさ', quick:true,
+      opts:[[0.22,'大'],[0.17,'ふつう'],[0.12,'小']], def:0.17 },
+    { key:'maxAngle', group:'seesaw', label:'最大の傾き', quick:true,
+      opts:[[15,'15度'],[25,'25度'],[35,'35度'],[45,'45度']], def:25 },
+    { key:'speed', group:'seesaw', label:'反応の速さ',
+      opts:[[3,'ゆっくり'],[6,'ふつう'],[10,'速い']], def:6 },
+    { key:'gain', group:'seesaw', label:'動きの感度',
+      opts:[[0.7,'控えめ'],[1.1,'ふつう'],[1.7,'敏感']], def:1.1 },
+    { key:'wait', group:'flow', label:'次のボールまで',
+      opts:[[5,'5秒'],[4,'4秒'],[3,'3秒'],[2,'2秒']], def:4 },
+    { key:'preview', group:'flow', type:'toggle', quick:true, label:'次のボールの予告',
+      hint:'次に落ちてくる色を先に見せます。見てからしゃがんだまま待つ子がいたので、ふだんは切っておきます。切ると、出てから見て動く練習になります', def:false },
+    { key:'marker', group:'flow', type:'toggle', label:'頭の位置を表示する',
       hint:'認識できているか、どこが基準かを確認できます', def:true },
   ],
+  /* 設定画面の タイル（エンジンの buildGroupUI が 使う）。絵は ゲームと 同じ drawBall で 描く */
+  groups: [
+    { id:'ball',   label:'ボール',   icon(c,w,h){ SEESAW.drawIcon('ball', c, w, h); } },
+    { id:'bomb',   label:'爆弾',     icon(c,w,h){ SEESAW.drawIcon('bomb', c, w, h); } },
+    { id:'toge',   label:'とげとげ', icon(c,w,h){ SEESAW.drawIcon('toge', c, w, h); } },
+    { id:'kago',   label:'かご',     icon(c,w,h){ SEESAW.drawIcon('kago', c, w, h); } },
+    { id:'seesaw', label:'シーソー', icon(c,w,h){ SEESAW.drawIcon('seesaw', c, w, h); } },
+    { id:'flow',   label:'進行・表示', icon(c,w,h){ SEESAW.drawIcon('flow', c, w, h); } },
+  ],
+  drawIcon(kind, c, w, h){
+    const fe = { ctx: c, isPixel: () => E.isPixel() };
+    const pixel = fe.isPixel();
+    const line = '#c8ccd6';
+    if(kind === 'ball'){
+      this.drawBall(fe, { kind:'A', spin:0 }, h*0.3, w*0.3, h*0.5);
+      this.drawBall(fe, { kind:'B', spin:0 }, h*0.3, w*0.7, h*0.5);
+    }else if(kind === 'bomb'){
+      this.drawBall(fe, { kind:'bomb', spin:0 }, h*0.26, w*0.5, h*0.5);   // 赤い輪（半径の 1.6倍まで）が はみ出さない 大きさ
+    }else if(kind === 'toge'){
+      this.drawBall(fe, { kind:'A', toge:true, spin:0.2 }, h*0.27, w*0.5, h*0.5);   // とげ（半径の 1.62倍）が はみ出さない 大きさ
+    }else if(kind === 'kago'){
+      const x0 = w*0.22, x1 = w*0.78, y0 = h*0.42, y1 = h*0.86, t = Math.max(4, h*0.07);
+      c.fillStyle = 'rgba(10,10,14,.55)'; c.fillRect(x0, y0, x1-x0, y1-y0);
+      this.drawBall(fe, { kind:'A', spin:0 }, h*0.1, w*0.42, y1 - t - h*0.1);
+      this.drawBall(fe, { kind:'A', spin:1 }, h*0.1, w*0.58, y1 - t - h*0.1);
+      c.fillStyle = '#22407e';
+      c.fillRect(x0, h*0.16, t, y1 - h*0.16); c.fillRect(x1 - t, y0, t, y1 - y0); c.fillRect(x0, y1 - t, x1 - x0, t);
+      c.fillStyle = '#4a7fe0'; c.fillRect(x0 - t*0.6, y0 - t, x1 - x0 + t*1.2, t);
+    }else if(kind === 'seesaw'){
+      c.fillStyle = '#6e6e7c';
+      c.beginPath(); c.moveTo(w*0.5, h*0.52); c.lineTo(w*0.38, h*0.86); c.lineTo(w*0.62, h*0.86); c.closePath(); c.fill();
+      c.save(); c.translate(w*0.5, h*0.5); c.rotate(-0.28);
+      c.fillStyle = line; c.fillRect(-w*0.4, -h*0.05, w*0.8, h*0.1);
+      c.restore();
+      this.drawBall(fe, { kind:'B', spin:0 }, h*0.11, w*0.66, h*0.3);
+    }else if(kind === 'flow'){
+      c.strokeStyle = line; c.lineWidth = Math.max(3, h*0.07); c.lineCap = pixel ? 'butt' : 'round';
+      c.beginPath(); c.arc(w*0.5, h*0.52, h*0.3, 0, Math.PI*2); c.stroke();
+      c.beginPath(); c.moveTo(w*0.5, h*0.52); c.lineTo(w*0.5, h*0.32); c.moveTo(w*0.5, h*0.52); c.lineTo(w*0.63, h*0.6); c.stroke();
+    }
+  },
   presets: {
-    やさしい:   { desc:'大きいボール・大きいかご・ばくだんなし',
+    やさしい:   { desc:'大きいボール・大きいかご・爆弾なし',
       v:{maxAngle:35, speed:6, gain:1.1, ballR:0.058, fric:1.6, basket:0.22, wait:5, preview:false, balls:2, bombs:0, holdSec:2, toge:0, wallTgt:0} },
-    ふつう:     { desc:'標準。ばくだんは3秒でとめる',
+    ふつう:     { desc:'標準。爆弾は3秒で止める',
       v:{maxAngle:25, speed:6, gain:1.1, ballR:0.044, fric:1.6, basket:0.17, wait:4, preview:false, balls:2, bombs:2, holdSec:3, wallTgt:0} },
-    むずかしい: { desc:'小さいボール・よく転がる・ばくだん4秒',
+    むずかしい: { desc:'小さいボール・よく転がる・爆弾4秒',
       v:{maxAngle:15, speed:10, gain:1.7, ballR:0.032, fric:0.7, basket:0.12, wait:3, preview:false, balls:2, bombs:2, holdSec:4, wallTgt:0} },
   },
 
@@ -3165,7 +3232,7 @@ const FREEZE_GAME = {
   CHANT1:'だるまさんが',
   CHANT2:'ころんだ',
 
-  // ポーズ カード。legs:true は「ポーズの しゅるい：あしも」のときだけ 出る
+  // ポーズ カード。legs:true は「ポーズの種類：足も」のときだけ 出る
   POSES:[
     { id:'banzai', name:'ばんざい',    legs:false },
     { id:'plane',  name:'ひこうき',    legs:false },
@@ -3205,35 +3272,35 @@ const FREEZE_GAME = {
   },
 
   settings:[
-    { key:'hit', label:'ブロックの たたきかた', quick:true,
-      opts:[[0,'たたかない'],[1,'てで たたく'],[2,'ジャンプ']], def:2 },
-    { key:'jump', label:'ジャンプの たかさ', quick:true,
-      opts:[[0.10,'ちいさく'],[0.17,'ふつう'],[0.26,'たかく']], def:0.17 },
-    { key:'poseBonus', label:'ポーズ ボーナス', quick:true,
-      opts:[[0,'なし'],[1,'すこし'],[2,'ふつう'],[3,'おおい']], def:2 },
-    { key:'poseKind', label:'ポーズの しゅるい',
-      opts:[[0,'うでだけ'],[1,'あしも']], def:0 },
-    { key:'caught', label:'みつかったら',
-      opts:[[0,'なにもなし'],[1,'コインを 1まい おとす'],[3,'コインを 3まい おとす']], def:1 },
-    { key:'warn', label:'とまれの よこく', quick:true,
-      opts:[[1.6,'ながい'],[0.9,'ふつう'],[0.35,'みじかい'],[0,'いきなり']], def:0.9 },
-    { key:'signal', label:'あいずの しゅるい', quick:true,
-      opts:[[0,'おに＋文字＋音'],[1,'おにを 見るだけ'],[2,'音だけ']], def:0 },
-    { key:'freezeDur', label:'とまる 長さ', quick:true,
-      opts:[[1.5,'みじかい'],[2.5,'ふつう'],[4,'ながい'],[6,'とても ながい']], def:2.5 },
-    { key:'moveDur', label:'うごく 長さ',
-      opts:[[2,'みじかい'],[3.5,'ふつう'],[5,'ながい']], def:3.5 },
-    { key:'tol', label:'じっとの きびしさ', quick:true,
-      opts:[[0.024,'ゆるい'],[0.013,'ふつう'],[0.007,'きびしい']], def:0.013 },
+    { key:'hit', label:'ブロックの叩き方', quick:true,
+      opts:[[0,'叩かない'],[1,'手で叩く'],[2,'ジャンプ']], def:2 },
+    { key:'jump', label:'ジャンプの高さ', quick:true,
+      opts:[[0.10,'低く'],[0.17,'ふつう'],[0.26,'高く']], def:0.17 },
+    { key:'poseBonus', label:'ポーズボーナス', quick:true,
+      opts:[[0,'なし'],[1,'少し'],[2,'ふつう'],[3,'多い']], def:2 },
+    { key:'poseKind', label:'ポーズの種類',
+      opts:[[0,'腕だけ'],[1,'足も']], def:0 },
+    { key:'caught', label:'見つかったら',
+      opts:[[0,'何もなし'],[1,'コインを1枚落とす'],[3,'コインを3枚落とす']], def:1 },
+    { key:'warn', label:'「とまれ」の予告', quick:true,
+      opts:[[1.6,'長い'],[0.9,'ふつう'],[0.35,'短い'],[0,'いきなり']], def:0.9 },
+    { key:'signal', label:'合図の種類', quick:true,
+      opts:[[0,'鬼＋文字＋音'],[1,'鬼を見るだけ'],[2,'音だけ']], def:0 },
+    { key:'freezeDur', label:'止まる長さ', quick:true,
+      opts:[[1.5,'短い'],[2.5,'ふつう'],[4,'長い'],[6,'とても長い']], def:2.5 },
+    { key:'moveDur', label:'動く長さ',
+      opts:[[2,'短い'],[3.5,'ふつう'],[5,'長い']], def:3.5 },
+    { key:'tol', label:'静止判定の厳しさ', quick:true,
+      opts:[[0.024,'ゆるい'],[0.013,'ふつう'],[0.007,'厳しい']], def:0.013 },
   ],
   presets:{
-    はじめて:   { desc:'てで たたく（すわったままでも）・よこく ながい・とまるのは みじかく',
+    はじめて:   { desc:'手で叩く（座ったままでも）・予告長い・止まるのは短く',
       v:{ hit:1, jump:0.10, poseBonus:1, poseKind:0, caught:0, warn:1.6, signal:0, freezeDur:1.5, moveDur:3.5, tol:0.024 } },
-    やさしい:   { desc:'まずは これから。ジャンプ ちいさく',
+    やさしい:   { desc:'まずはこれから。ジャンプ低く',
       v:{ hit:2, jump:0.10, poseBonus:2, poseKind:0, caught:0, warn:0.9, signal:0, freezeDur:2.5, moveDur:3.5, tol:0.024 } },
-    ふつう:     { desc:'おにを 見て 止まる。みつかると 1まい おとす',
+    ふつう:     { desc:'鬼を見て止まる。見つかると1枚落とす',
       v:{ hit:2, jump:0.17, poseBonus:2, poseKind:0, caught:1, warn:0.9, signal:1, freezeDur:2.5, moveDur:3.5, tol:0.013 } },
-    むずかしい: { desc:'いきなり・音だけ・長く とまる・あしの ポーズも',
+    むずかしい: { desc:'いきなり・音だけ・長く止まる・足のポーズも',
       v:{ hit:2, jump:0.26, poseBonus:3, poseKind:1, caught:1, warn:0, signal:2, freezeDur:4, moveDur:2, tol:0.007 } },
   },
 
@@ -4220,20 +4287,14 @@ function openGame(id){
   painters.length = 0;   // 使い回しの paint を組み直す
   rebuildEnginePainters();
 
-  for(const def of game.settings){
-    const mk = (parent) => {
-      if(def.type === 'toggle'){
-        toggle(parent, def.label, def.hint, () => gs()[def.key], v => gs()[def.key] = v);
-      }else{
-        const row = document.createElement('div'); row.className = 'row';
-        const lb = document.createElement('label'); lb.textContent = def.label;
-        const st = document.createElement('div'); st.className = 'grow';
-        row.append(lb, st); parent.appendChild(row);
-        stepper(st, def.opts, () => gs()[def.key], v => gs()[def.key] = v);
-      }
-    };
-    mk(host);
-    if(def.quick) mk(quick);
+  if(game.groups){
+    buildGroupUI(host, 'full');
+    buildGroupUI(quick, 'quick');
+  }else{
+    for(const def of game.settings){
+      settingRow(host, def);
+      if(def.quick) settingRow(quick, def);
+    }
   }
 
   // プリセット
@@ -4250,6 +4311,70 @@ function openGame(id){
 
   show('setup'); syncUI();
 }
+/* 設定1つぶんの 行（段階スライダー か チェック） */
+function settingRow(parent, def){
+  if(def.type === 'toggle'){
+    return toggle(parent, def.label, def.hint, () => gs()[def.key], v => gs()[def.key] = v);
+  }
+  const row = document.createElement('div'); row.className = 'row';
+  const lb = document.createElement('label'); lb.textContent = def.label;
+  const st = document.createElement('div'); st.className = 'grow';
+  row.append(lb, st); parent.appendChild(row);
+  stepper(st, def.opts, () => gs()[def.key], v => gs()[def.key] = v);
+  return row;
+}
+
+/* 設定を タイルで わける（ゲームが groups を持つとき）。
+   groups: [{ id, label, main?, icon(ctx, w, h) }]。設定の group が id と 同じものが そのタイルに 入る。
+   タイルには main（なければ グループの 最初の 設定）の いまの 値を 出し、0 か オフなら 絵を うすくして
+   ほかの 行も うすくする。既定と ちがう 値が あれば 右上に 点。押すと その グループの 設定だけが 下に 開く。
+   mode 'quick'（一時停止）は quick の 設定だけで 組む。group の ない 設定は タイルの 下に ふつうに ならべる */
+const groupSel = { full:null, quick:null };
+function buildGroupUI(parent, mode){
+  const defs = game.settings.filter(d => mode === 'full' || d.quick);
+  const groups = game.groups.filter(g => defs.some(d => d.group === g.id));
+  if(!groups.some(g => g.id === groupSel[mode])) groupSel[mode] = groups.length ? groups[0].id : null;
+  const grid = document.createElement('div'); grid.className = 'gtiles';
+  parent.appendChild(grid);
+  for(const g of groups){
+    const mine = game.settings.filter(d => d.group === g.id);
+    const main = mine.find(d => d.key === g.main) || mine[0];
+    const t = document.createElement('button'); t.type = 'button'; t.className = 'gtile';
+    const cv = document.createElement('canvas'); cv.width = 96; cv.height = 72;
+    const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = g.label;
+    const vl = document.createElement('div'); vl.className = 'vl';
+    const dot = document.createElement('span'); dot.className = 'dot';
+    t.append(cv, nm, vl, dot); grid.appendChild(t);
+    const pn = document.createElement('div'); pn.className = 'gpanel';
+    parent.appendChild(pn);
+    for(const d of defs.filter(d => d.group === g.id)){
+      const row = settingRow(pn, d);
+      if(d === main) row.classList.add('main');
+    }
+    t.onclick = () => { groupSel[mode] = g.id; syncUI(); };
+    painters.push(() => {
+      const sel = groupSel[mode] === g.id;
+      t.classList.toggle('sel', sel);
+      pn.style.display = sel ? '' : 'none';
+      const v = gs()[main.key];
+      const o = main.opts && main.opts.find(o => String(o[0]) === String(v));
+      vl.textContent = main.type === 'toggle' ? (v ? 'あり' : 'なし') : (o ? o[1] : '');
+      const off = v === 0 || v === false;
+      t.classList.toggle('off', off); pn.classList.toggle('off', off);
+      dot.style.display = mine.some(d => String(gs()[d.key]) !== String(d.def)) ? '' : 'none';
+      const c = cv.getContext('2d');
+      c.clearRect(0, 0, cv.width, cv.height);
+      if(g.icon){ c.save(); try{ g.icon(c, cv.width, cv.height); }catch(e){} c.restore(); }
+    });
+  }
+  if(groups.length){
+    const n = document.createElement('div'); n.className = 'gnote';
+    n.innerHTML = '<span style="color:var(--gold)">●</span> は既定と違う値にしている設定があるタイル';
+    grid.after(n);
+  }
+  for(const d of defs.filter(d => !d.group)) settingRow(parent, d);
+}
+
 /* エンジン側のスライダーは painters を作り直すたびに再登録する */
 function rebuildEnginePainters(){
   stepper('stepTime', [[30,'30秒'],[60,'1分'],[120,'2分'],[180,'3分'],[300,'5分'],[600,'10分']], ()=>CFG.duration, v=>CFG.duration=v);
@@ -4291,7 +4416,7 @@ $('btnTest').onclick = () => { G.test = true; startGame(); };
 $('bootBack').onclick = () => show('setup');
 $('btnBackToLauncher').onclick = () => show('launcher');
 $('btnSwapNow').onclick = () => beginSwap();
-$('btnPause').onclick = () => { G.paused = true; $('pause').classList.add('on'); };
+$('btnPause').onclick = () => { G.paused = true; syncUI(); $('pause').classList.add('on'); };
 $('btnResume').onclick = () => { $('pause').classList.remove('on'); G.paused = false; };
 /* やめるは2回押し。1回目の押しまちがいで、それまでのゲームが結果も出ずに消えないように */
 let quitArmed = 0;

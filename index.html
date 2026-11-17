@@ -279,6 +279,9 @@
   #timer .v{font-size:34px; font-variant-numeric:tabular-nums; line-height:1.2;}
   #timer .nm{font-size:10px; color:var(--muted); letter-spacing:.16em;}
   #timer .who{font-size:11px; color:var(--accent-txt); margin-top:4px; white-space:nowrap;}
+  /* 協力の ゲーム（teamScore:false）は あお・あかの 点を 出さない。競争に ならないように。合計を 大きく 出す */
+  #game.noteam .score .v{display:none;}
+  #game.noteam #timer .who{font-size:18px;}
   #timer.warn .v{color:var(--gold);}
 
   #notice{
@@ -298,12 +301,20 @@
     padding:12px 15px; font-size:13px; cursor:pointer; font-family:inherit; text-shadow:var(--shadow); box-shadow:var(--bev);
   }
   #tools button.armed{background:rgba(160,40,34,.95); color:#fff;}
+  /* 説明デモ（game.demo を持つゲームだけ）。点数・時間・交代・ゲームの道具は かくし、もどる／つぎへ を出す */
+  #tools .demoNav{display:none;}
+  #game.demo #tools .demoNav{display:block;}
+  #game.demo #hud, #game.demo #notice, #game.demo #btnSwapNow, #game.demo #tools .gameTool{display:none;}
+  #tools button.demoNav{font-size:16px; padding:12px 20px;}
   #banner{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px; pointer-events:none; text-align:center;}
   #banner .t{font-size:clamp(52px,15vw,140px); line-height:1.1;}
   #banner .s{font-size:clamp(15px,3.4vw,24px); color:var(--accent-txt);}
   :root[data-theme="voxel"] #banner .t{text-shadow:6px 6px 0 rgba(0,0,0,.75);}
   :root[data-theme="voxel"] #banner .s{text-shadow:3px 3px 0 rgba(0,0,0,.85);}
   #banner.solid{background:rgba(10,10,14,.9);}
+  /* カウントダウンは 幕を うすく して カメラの 映像を 見せる（2026-11-17。こい 幕だと 映像が 見えた しゅんかんに 基準を 取っていた） */
+  #banner.count{background:rgba(10,10,14,.35);}
+  #banner.count .t, #banner.count .s{text-shadow:0 0 14px rgba(0,0,0,.95), 3px 3px 0 rgba(0,0,0,.8);}
 
   #pause{position:absolute; inset:0; background-color:rgba(10,10,14,.97); background-repeat:repeat; background-size:128px 128px; display:none; overflow-y:auto;}
   #pause.on{display:block;}
@@ -319,8 +330,25 @@
   .fcard .nm{font-size:13px; margin-bottom:6px;}
   .fcard.b .nm,.fcard.b .v{color:var(--blue-lt);} .fcard.r .nm,.fcard.r .v{color:var(--red-lt);}
   .fcard .v{font-size:54px; line-height:1.1;}
-  .fcard .d{color:var(--muted); font-size:11.5px; margin-top:10px; line-height:1.9;}
-  #coopLine{color:var(--ink); font-size:14px; margin:-6px 0 22px; line-height:1.9;}
+  .fcard .d{color:var(--muted); font-size:clamp(12px,1.8vw,18px); margin-top:10px; line-height:1.7;}
+  #coopLine{color:var(--ink); font-size:clamp(16px,2.4vw,24px); margin:-6px 0 22px; line-height:1.7;}
+  /* ものごとの 点（game.result の rows）。3〜4m 離れて 読める 大きさ */
+  #result.rows #wsub{color:var(--ink); font-size:clamp(16px,2.6vw,26px);}
+  #rRows{display:none; flex-direction:column; gap:10px; width:100%; max-width:600px; box-sizing:border-box; margin:0 auto 24px;}
+  #result.rows #rRows{display:flex;}
+  .rrow{display:flex; align-items:center; gap:18px; padding:8px 24px; background:var(--panel); border-radius:var(--radius); box-shadow:var(--bev);}
+  .rrow canvas{width:clamp(56px,8vw,84px); height:clamp(42px,6vw,63px); flex:0 0 auto;}
+  .rrow .nm{flex:1; text-align:left; font-size:clamp(20px,3.4vw,34px);}
+  .rrow .v{font-size:clamp(30px,5vw,52px); line-height:1.1; color:var(--gold); font-variant-numeric:tabular-nums;}
+  .rrow .u{font-size:clamp(16px,2.4vw,24px); margin-left:6px;}
+  .rrow.dim{opacity:.6;} .rrow.dim .v{color:var(--muted);}
+  /* 職員用（詳しい記録・記録を保存）。子どもの 目に とまらないよう 小さく */
+  #rStaffBtns{display:none; gap:10px; justify-content:center; margin-top:22px;}
+  #result.staff #rStaffBtns{display:flex;}
+  #rStaffBtns .ghost{padding:9px 16px; font-size:12.5px; opacity:.85;}
+  #staffBox{width:100%; max-width:600px; box-sizing:border-box; margin:12px auto 0; padding:14px 20px; text-align:left; font-size:14px; line-height:1.9; background:var(--panel); border-radius:var(--radius); box-shadow:var(--bev);}
+  #staffBox table{border-collapse:collapse; width:100%;}
+  #staffBox th{font-weight:400; color:var(--muted); padding-right:16px; white-space:nowrap; vertical-align:top; text-align:left;}
 
   #boot{position:fixed; inset:0; background:var(--bg); display:none; align-items:center; justify-content:center; flex-direction:column; gap:20px; z-index:50; padding:24px; text-align:center;}
   #boot.on{display:flex;}
@@ -436,6 +464,7 @@
       <label class="chk"><input type="checkbox" id="optFull"><span>高精度モード<span class="hint">　／　正確になりますが動作が重くなります</span></span></label>
       <label class="chk"><input type="checkbox" id="optSkeleton" checked><span>体の線を表示する<span class="hint">　／　認識できているか確認しやすい</span></span></label>
       <label class="chk"><input type="checkbox" id="optSound" checked><span>音を出す</span></label>
+      <div class="row"><label>BGM</label><div class="stepper grow" id="stepBgm"></div></div>
       <p class="note">
         画面のラインと床のラインが重なるようスライダーで合わせてください。ゲーム中も「設定」から調整できます。カメラは <b>全身が入る位置</b>（3〜4m離す／高さ1m前後）に。
       </p>
@@ -444,6 +473,7 @@
     <div class="bar">
       <button class="ghost" id="btnSaveCfg">設定を保存</button>
       <button class="ghost" id="btnLoadCfg2">設定を読み込む</button>
+      <button class="ghost" id="btnDemo">説明デモ</button>
       <button class="ghost" id="btnTest">カメラなしでお試し</button>
       <button class="big" id="btnStart">はじめる</button>
     </div>
@@ -461,6 +491,8 @@
   <div id="notice"></div>
   <div id="banner"></div>
   <div id="tools">
+    <button id="btnDemoPrev" class="demoNav">◀ もどる</button>
+    <button id="btnDemoNext" class="demoNav">つぎへ ▶</button>
     <button id="btnSwapNow">いま交代</button>
     <button id="btnPause">設定</button>
     <button id="btnQuit">やめる</button>
@@ -488,7 +520,8 @@
 <div id="result" class="screen">
   <div id="winner">ひきわけ</div>
   <div id="wsub"></div>
-  <div class="final">
+  <div id="rRows"></div>
+  <div class="final" id="rCards">
     <div class="fcard b"><div class="nm" id="rNameA">あおチーム</div><div class="v" id="rScoreA">0</div><div class="d" id="rDetA"></div></div>
     <div class="fcard r"><div class="nm" id="rNameB">あかチーム</div><div class="v" id="rScoreB">0</div><div class="d" id="rDetB"></div></div>
   </div>
@@ -498,6 +531,12 @@
     <button class="ghost" id="btnBackSetup">設定にもどる</button>
     <button class="ghost" id="btnBackLauncher">ゲームをえらぶ</button>
   </div>
+  <!-- 職員用。ゲームが staff／record を 返したときだけ 出る -->
+  <div id="rStaffBtns">
+    <button class="ghost" id="btnStaff">詳しい記録</button>
+    <button class="ghost" id="btnSaveRec">記録を保存</button>
+  </div>
+  <div id="staffBox" style="display:none;"></div>
 </div>
 
 <div id="boot">
@@ -699,6 +738,80 @@ const sfx = {
   end:  () => { [784,659,523].forEach((f,i)=>setTimeout(()=>beep(f,0.25,'sine',0.18),i*180)); },
 };
 
+/* ---------------------------- BGM（2026-11-17） ----------------------------
+   外部の 音声ファイルは 使わない（README §6）。効果音と 同じ WebAudio で、8分音符の 楽譜を 少し 先まで 予約して 鳴らす。
+   鳴るのは プレイ中だけ（カウントダウン・一時停止・交代・結果・説明デモ では 止める）。「音を出す」を 切ると BGM も 止まる。
+   音量は 共通設定の「BGM」（CFG.bgm：0 なし／1 小さい／2 ふつう）。効果音（0.16 前後）より ずっと 小さく して、成功音を じゃましない。
+   ゲームは 定義に bgm:'yukkuri' か bgm:{ song:'genki', vol:0.6 } を 書いて 曲と 音量を えらべる（bgm:false で なし。書かなければ genki）。
+   楽譜：mel は 8分音符 ごとの MIDI 番号（null は のばす／休み）・bass は 1小節 ごとの 根音（4分音符で 根音・5度・根音・5度） */
+const BGM_SONGS = {
+  genki: { bpm:132, wave:'square', mel:[
+      72,76,79,76, 77,76,74,null,   72,74,76,79, 76,null,74,null,
+      77,81,84,81, 79,77,76,null,   74,76,77,74, 72,null,null,null,
+      76,76,79,79, 81,79,76,null,   77,77,76,76, 74,null,79,null,
+      72,76,79,84, 83,81,79,77,     76,74,72,null, 67,null,72,null ],
+    bass:[48,48,53,55, 48,53,48,55] },
+  yukkuri: { bpm:96, wave:'triangle', mel:[
+      67,null,72,null, 76,null,74,72,   74,null,null,null, 67,null,null,null,
+      69,null,72,null, 77,null,76,74,   72,null,null,null, null,null,null,null,
+      76,null,79,null, 81,null,79,76,   77,null,76,null, 74,null,72,null,
+      69,null,72,null, 74,null,76,74,   72,null,null,null, null,null,null,null ],
+    bass:[48,55,53,48, 45,53,50,48] },
+};
+const BGM = {
+  LEVEL: [0, 0.035, 0.06],
+  on:false, out:null, next:0, step:0, song:null,
+  conf(){
+    const b = game ? game.bgm : undefined;
+    if(b === false) return null;
+    const o = typeof b === 'string' ? { song:b } : (b || {});
+    return { song: BGM_SONGS[o.song] || BGM_SONGS.genki, vol: o.vol ?? 1 };
+  },
+  want(){ return CFG.sound && CFG.bgm > 0 && G.mode === 'play' && !G.paused && !!this.conf(); },
+  update(){
+    if(!this.want()){ if(this.on) this.stop(); return; }
+    try{
+      actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+      if(actx.state === 'suspended') actx.resume();
+      const c = this.conf(), now = actx.currentTime;
+      if(!this.on){
+        this.on = true; this.song = c.song; this.step = 0; this.next = now + 0.08;
+        this.out = actx.createGain(); this.out.gain.value = 0; this.out.connect(actx.destination);
+      }
+      this.out.gain.setTargetAtTime(this.LEVEL[CFG.bgm] * c.vol, now, 0.08);   // 音量を 変えたら すぐ なじむ
+      if(this.next < now - 0.2) this.next = now + 0.05;   // 画面が うしろに まわって おくれたら つめずに 先から
+      const sp = 60 / this.song.bpm / 2;                  // 8分音符の 長さ（秒）
+      while(this.next < now + 0.3){ this.play(this.step, this.next, sp); this.step++; this.next += sp; }
+    }catch(_){}
+  },
+  stop(){
+    this.on = false;
+    const o = this.out; this.out = null;
+    if(o && actx){ o.gain.setTargetAtTime(0, actx.currentTime, 0.06); setTimeout(() => { try{ o.disconnect(); }catch(_){} }, 600); }
+  },
+  play(i, t, sp){
+    const s = this.song, n = s.mel.length, k = i % n;
+    const m = s.mel[k];
+    if(m != null){
+      let len = 1; while(len < 4 && s.mel[(k + len) % n] == null && (k + len) % 8) len++;   // 小節を またがずに のばす
+      this.note(m, t, sp * len * 0.92, s.wave, 0.5);
+    }
+    if(k % 2 === 0){                                       // 4分音符 ごとに ベース（根音・5度）
+      const r = s.bass[Math.floor(k / 8) % s.bass.length];
+      this.note(r + (k % 4 ? 7 : 0), t, sp * 1.7, 'triangle', 1.0);
+    }
+  },
+  note(midi, t, dur, wave, g){
+    const o = actx.createOscillator(), e = actx.createGain();
+    o.type = wave; o.frequency.value = 440 * Math.pow(2, (midi - 69) / 12);
+    e.gain.setValueAtTime(0, t);
+    e.gain.linearRampToValueAtTime(g, t + 0.015);
+    e.gain.setTargetAtTime(0, t + dur * 0.6, dur * 0.25);
+    o.connect(e); e.connect(this.out);
+    o.start(t); o.stop(t + dur + 0.3);
+  },
+};
+
 /* ============================ エンジンの設定 ============================ */
 const CFG = {
   gameId: null,
@@ -709,6 +822,7 @@ const CFG = {
   model: 'lite',
   skeleton: true,
   sound: true,
+  bgm: 2,          // BGM：0 なし／1 小さい／2 ふつう（「音を出す」を 切ると BGM も 鳴らない）
   swap: false, swapAuto: true, teamSize: 5, swapEvery: 60, swapPause: 10,
   monsterHP: 40,
   nameA: 'あおチーム', nameB: 'あかチーム',
@@ -820,6 +934,7 @@ function syncUI(){
   $('modeCoop').style.display = modes.includes('coop') ? '' : 'none';
   $('cardMode').style.display = modes.length > 1 ? '' : 'none';
   $('cardMonster').style.display = CFG.mode === 'coop' ? '' : 'none';
+  $('btnDemo').style.display = (game && game.demo) ? '' : 'none';
   $('swapRows').style.opacity = CFG.swap ? '1' : '.45';
   if($('teamSize') !== document.activeElement) $('teamSize').value = CFG.teamSize;
   // いまの設定と完全に一致するプリセットを光らせる
@@ -1129,7 +1244,7 @@ const G = {
   left:0, targets:[], parts:[], fx:[], poses:null,
   people:{A:0,B:0},
   score:{A:0,B:0},
-  stat:{A:{hit:0,bad:0,miss:0}, B:{hit:0,bad:0,miss:0}},
+  stat:{A:{hit:0,bad:0,miss:0,bonus:0,bonusPts:0}, B:{hit:0,bad:0,miss:0,bonus:0,bonusPts:0}},
   seq:0, lastTick:-1,
   swapTimer:0, swapLeft:0, swapCount:0,
   monster:null, defeated:0, damage:0,
@@ -1157,6 +1272,11 @@ const E = {
   vectorStar,                       // なめらかな星（くっきりテーマ用）
   /* --- custom型ゲーム用 --- */
   get score(){ return { A:G.score.A, B:G.score.B }; },   // いまの得点（読むだけ。返すのは写し）
+  /* --- 結果画面用（読むだけ。写し） --- */
+  get stat(){ return JSON.parse(JSON.stringify(G.stat)); },   // チームごとの hit／bad／miss／bonus／bonusPts
+  get swapCount(){ return G.swapCount; },
+  get coop(){ const m = G.monster;                            // 協力モード（モンスター）の ようす
+    return { defeated:G.defeated, damage:G.damage, hpPct: m ? m.hp / m.maxHp : 0 }; },
   get poses(){ return G.poses || []; },   // 生のランドマーク配列
   L,                                      // ランドマーク番号の定数
   teamOfPose,                             // その人が左右どちらのチームか
@@ -1175,7 +1295,7 @@ function teamOfPose(lms){
 function resetGame(){
   G.targets = []; G.fx = []; G.parts = []; G.people = {A:0,B:0};
   G.score = {A:0,B:0};
-  G.stat = {A:{hit:0,bad:0,miss:0}, B:{hit:0,bad:0,miss:0}};
+  G.stat = {A:{hit:0,bad:0,miss:0,bonus:0,bonusPts:0}, B:{hit:0,bad:0,miss:0,bonus:0,bonusPts:0}};   // bonus＝kind が bonus の 数と 点（ラッキースターなど）
   G.seq = 0; G.lastTick = -1;
   G.left = CFG.duration;
   G.swapTimer = swapInterval(); G.swapLeft = 0; G.swapCount = 0;
@@ -1225,6 +1345,7 @@ function award(team, points, kind, x, y){
   }else{
     G.stat[team].hit++;
     const gold = kind === 'bonus';
+    if(gold){ G.stat[team].bonus++; G.stat[team].bonusPts += points; }
     burst(x, y, gold ? '#f5c542' : team==='A' ? '#5b8ff0' : '#e0534c', gold ? 24 : 14);
     floatText(x, y, '+' + points, gold ? '#ffe89a' : '#fff');
     gold ? sfx.bonus() : sfx.hit();
@@ -1295,7 +1416,7 @@ function tickSwap(dt){
   banner('こうたい！', `${who}　—　のこり ${sec}秒`, 0, true);
   if(sec !== G.lastTick){ G.lastTick = sec; if(sec <= 3 && sec > 0) sfx.tick(); }
   if(G.swapLeft <= 0){
-    $('banner').innerHTML = ''; $('banner').classList.remove('solid');
+    $('banner').innerHTML = ''; $('banner').classList.remove('solid', 'count');
     G.mode = 'play'; G.swapTimer = swapInterval(); G.lastTick = -1;
     banner('スタート！', '', 700); sfx.go();
     if(game && game.start) game.start(E);   // 交代のたびに姿勢の基準を取り直す
@@ -1364,7 +1485,8 @@ function collide(){
 /* ============================ 更新 ============================ */
 function update(dt){
   const now = performance.now();
-  if(G.test) testParts();
+  if(G.mode === 'demo'){ if(game && game.demo) game.demo.tick(dt, E); }   // 説明デモ：時間も 交代も 進めない
+  else if(G.test) testParts();
   if(G.mode === 'swap') tickSwap(dt);
 
   if(G.mode === 'play'){
@@ -1546,7 +1668,8 @@ function draw(){
   const now = performance.now();
   if(coop) drawMonster(now);
   if(game){
-    if(game.custom) game.render(now, E);              // 画面まるごと自前で描く
+    if(G.mode === 'demo' && game.demo) game.demo.render(now, E);   // 説明デモは デモが 画面を 描く
+    else if(game.custom) game.render(now, E);              // 画面まるごと自前で描く
     else for(const t of G.targets) game.draw(t, now, E);
   }
 
@@ -1591,6 +1714,7 @@ function loop(ts){
     try{ collectParts(landmarker.detectForVideo(video, ts).landmarks || []); }catch(_){}
   }
   if(!G.paused) update(dt);
+  BGM.update();          // プレイ中だけ 鳴らす（一時停止・交代・結果では 止まる）
   draw();
   updateHUD();
 }
@@ -1620,11 +1744,13 @@ function fitCanvas(){
   cv.width = W; cv.height = H;
   cv.style.width = '100%'; cv.style.height = '100%'; cv.style.objectFit = 'contain';
 }
-function banner(t, s, ms, solid){
+/* look：true＝こい 幕（交代）／'count'＝うすい 幕（カウントダウン。カメラに うつる じぶんを 見ながら 立つ 位置を 決められるように） */
+function banner(t, s, ms, look){
   const b = $('banner');
   b.innerHTML = `<div class="t">${t}</div>` + (s ? `<div class="s">${s}</div>` : '');
-  b.classList.toggle('solid', !!solid);
-  if(ms) setTimeout(() => { if(b.innerHTML.includes(t)){ b.innerHTML = ''; b.classList.remove('solid'); } }, ms);
+  b.classList.toggle('solid', look === true);
+  b.classList.toggle('count', look === 'count');
+  if(ms) setTimeout(() => { if(b.innerHTML.includes(t)){ b.innerHTML = ''; b.classList.remove('solid', 'count'); } }, ms);
 }
 /* ゲームが自分の操作ボタンを右下に足せる（game.tools = [{label, run(E)}]）。押せるのはプレイ中だけ */
 function buildGameTools(){
@@ -1640,12 +1766,14 @@ let runId = 0;   // カウントダウン中にやめた／やり直したら、
 async function startGame(){
   const run = ++runId;
   resetGame(); fitCanvas(); disarmQuit(); buildGameTools();
-  show('game'); $('pause').classList.remove('on'); G.paused = false;
+  show('game'); $('game').classList.remove('demo'); $('pause').classList.remove('on'); G.paused = false;
+  // 協力モード（モンスター）も 対戦ではないので、あお・あかの 点は 出さない
+  $('game').classList.toggle('noteam', !!(game && game.teamScore === false) || CFG.mode === 'coop');
   cancelAnimationFrame(raf); prev = performance.now(); raf = requestAnimationFrame(loop);
   G.mode = 'count';
   const steps = ['3','2','1','スタート！'];
   for(let i=0;i<steps.length;i++){
-    banner(steps[i], i<3 ? 'じぶんの じんちに ならんで' : '', 900, i<3);
+    banner(steps[i], i<3 ? 'じぶんの じんちに ならんで' : '', 900, i<3 ? 'count' : false);
     beep(i<3 ? 523 : 880, 0.18);
     await new Promise(r => setTimeout(r, i<3 ? 900 : 600));
     if(run !== runId || G.mode !== 'count') return;
@@ -1656,13 +1784,18 @@ async function startGame(){
 }
 function finish(){
   G.mode = 'over'; G.left = 0; G.targets = [];
-  $('banner').innerHTML = ''; $('banner').classList.remove('solid');
+  $('banner').innerHTML = ''; $('banner').classList.remove('solid', 'count');
   sfx.end();
   const a = G.score.A, b = G.score.B;
   $('rNameA').textContent = CFG.nameA; $('rNameB').textContent = CFG.nameB;
   $('rScoreA').textContent = a; $('rScoreB').textContent = b;
   const w = $('winner'), sub = $('wsub'), line = $('coopLine');
   const total = G.stat.A.hit + G.stat.B.hit;
+  // 前の 回の 行・職員用を けしておく（スターキャッチの 対戦では 使わない）
+  $('result').classList.remove('rows', 'staff');
+  $('rCards').style.display = '';
+  $('rRows').innerHTML = ''; $('staffBox').innerHTML = ''; $('staffBox').style.display = 'none';
+  G.record = null;
 
   // ゲームが独自の結果を持っていればそれを使う（勝敗のないゲーム用）
   if(game && game.result){
@@ -1670,7 +1803,10 @@ function finish(){
     w.textContent = r.title || 'おしまい';
     w.style.color = r.color || 'var(--gold)';
     sub.textContent = r.sub || '';
+    resultRows(r.rows || []);
+    resultStaff(r);
     const cards = r.cards || [];
+    $('rCards').style.display = cards.length ? '' : 'none';
     $('rNameA').textContent = cards[0] ? cards[0].label : '';
     $('rScoreA').textContent = cards[0] ? cards[0].value : '';
     $('rDetA').textContent  = cards[0] ? (cards[0].detail || '') : '';
@@ -1709,7 +1845,110 @@ function finish(){
   }
   setTimeout(() => show('result'), 900);
 }
-function stopLoop(){ cancelAnimationFrame(raf); raf = 0; G.mode = 'idle'; }
+/* --- 結果の「ものごとの 点」。rows: [{ label, value, unit?, icon?(ctx, w, h) }]。
+   あお・あかに 分けずに、使った ものごとに 何点 とれたかを 大きく 出す（協力の ゲーム用） --- */
+function resultRows(rows){
+  $('result').classList.toggle('rows', rows.length > 0);
+  for(const row of rows){
+    const el = document.createElement('div'); el.className = 'rrow' + (row.dim ? ' dim' : '');   // dim＝うすく（へった ぶん など）
+    if(row.icon){
+      const cv = document.createElement('canvas'); cv.width = 168; cv.height = 126;
+      const c = cv.getContext('2d');
+      try{ row.icon(c, cv.width, cv.height); }catch(e){}
+      el.appendChild(cv);
+    }
+    const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = row.label;
+    const v = document.createElement('div'); v.className = 'v'; v.textContent = row.value;
+    const u = document.createElement('span'); u.className = 'u'; u.textContent = row.unit ?? 'てん';
+    v.appendChild(u);
+    el.append(nm, v);
+    $('rRows').appendChild(el);
+  }
+}
+
+/* --- 職員用。staff: [[見出し, 内容], …] は「詳しい記録」で 開く 表。
+   record: [[列名, 値], …] は「記録を保存」の CSV（ゲームを またいで 同じ 列に なるよう、ゲームが いつも 同じ 列を 返す）。
+   どちらも なければ ボタンは 出ない --- */
+function resultStaff(r){
+  const staff = r.staff || [], rec = r.record || null;
+  if(!staff.length && !rec) return;
+  $('result').classList.add('staff');
+  const box = $('staffBox');
+  const tb = document.createElement('table');
+  for(const [k, v] of staff){
+    const tr = document.createElement('tr');
+    const th = document.createElement('th'); th.textContent = k;
+    const td = document.createElement('td'); td.textContent = v;
+    tr.append(th, td); tb.appendChild(tr);
+  }
+  box.appendChild(tb);
+  $('btnStaff').style.display = staff.length ? '' : 'none';
+  $('btnStaff').textContent = '詳しい記録';
+  $('btnSaveRec').style.display = rec ? '' : 'none';
+  $('btnSaveRec').textContent = '記録を保存';
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  G.record = !rec ? null : {
+    stamp: `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`,
+    cols: [
+      ['日時', `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`],
+      ['ゲーム', game.name],
+      ['時間（秒）', CFG.duration],
+      ['交代（回）', G.swapCount || 0],
+      ...rec,
+      ['設定', settingsText(game)],
+    ],
+  };
+}
+// 設定を「項目:段」で 1行に（記録の CSV 用。どの 設定で 遊んだかを あとで 見返せるように）
+function settingsText(g){
+  const s = S[g.id] || {};
+  const grp = id => ((g.groups || []).find(x => x.id === id) || {}).label;
+  return (g.settings || []).map(d => {
+    const v = s[d.key];
+    let t;
+    if(d.type === 'toggle') t = v ? 'あり' : 'なし';
+    else { const o = d.opts && d.opts.find(o => String(o[0]) === String(v)); t = o ? o[1] : v; }
+    const gl = grp(d.group);                         // タイルに 分けた ゲームは「ボール 出す量」のように タイル名を つける
+    return `${gl && !d.label.startsWith(gl) ? gl + ' ' : ''}${d.label}:${t}`;
+  }).join(' / ');
+}
+// CSV（Excel で 文字化け しないよう BOM つき）。1回 1ファイル。ファイル名に 日時
+function saveRecord(){
+  const r = G.record; if(!r) return;
+  const esc = v => { const s = String(v ?? ''); return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const csv = '﻿' + r.cols.map(c => esc(c[0])).join(',') + '\r\n' + r.cols.map(c => esc(c[1])).join(',') + '\r\n';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv' }));
+  a.download = `記録_${game.name}_${r.stamp}.csv`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  $('btnSaveRec').textContent = '保存しました';
+}
+
+function stopLoop(){ cancelAnimationFrame(raf); raf = 0; G.mode = 'idle'; BGM.stop(); }
+
+/* ============================ 説明デモ ============================
+   活動の前に 職員が ルールを 説明するときに 使う。カメラは 使わない。
+   ゲームが demo: { start(E), tick(dt,E), render(now,E), next(E), prev(E) } を 持つときだけ、設定画面に ボタンが 出る。
+   時間・カウントダウン・交代・点数の 表示は なし。右下の もどる／つぎへ（矢印キー・スペース・PageDown でも）で 場面を 進める。
+   「設定」で 一時停止して 設定を 変えると、デモが 自分で 気づいて 場面を やり直す */
+function startDemo(){
+  if(!game || !game.demo) return;
+  ++runId;                                       // カウントダウンが 残っていたら 止める
+  G.test = true; G.poses = null; G.parts = [];   // 前の ゲームの カメラの 姿勢が 残らないように
+  resetGame(); fitCanvas(); disarmQuit(); buildGameTools();
+  $('banner').innerHTML = ''; $('banner').classList.remove('solid', 'count');
+  show('game'); $('game').classList.add('demo'); $('pause').classList.remove('on'); G.paused = false;
+  G.mode = 'demo';
+  game.demo.start(E);
+  cancelAnimationFrame(raf); prev = performance.now(); raf = requestAnimationFrame(loop);
+}
+function endDemo(){
+  stopLoop(); $('game').classList.remove('demo'); show('setup');
+}
+function demoStep(dir){
+  if(G.mode !== 'demo' || G.paused || !game || !game.demo) return;
+  if(dir > 0) game.demo.next(E); else game.demo.prev(E);
+}
 
 /* ============================ テストモード ============================ */
 const testPointer = { x:0.3, y:0.5 };
@@ -2048,6 +2287,95 @@ const STAR_CATCH = {
     }
     ctx.restore();
   },
+
+  /* ---------------- ゲーム中の合計（協力モードだけ。対戦では 出さない） ---------------- */
+  hudTotal(E){
+    if(!E.isCoop()) return '';
+    const st = E.stat;
+    return `みんなで ${st.A.hit + st.B.hit}こ`;
+  },
+
+  /* ---------------- 結果 ----------------
+     対戦：勝ち負けと 2チームの 点は 出す（対戦の ゲームなので）。カードの 内訳は「とった・TNT」だけ（のがしは 子どもに 見せない）。
+           下に 毎回「みんなで あわせて ○こ」（2026-09-28 の レビュー）。
+     協力（モンスター）：あお・あかに 分けず、ほし・ラッキースターで 何点 とれたかの 行。
+     どちらも のがし・チームごとの 内訳は 職員用（「詳しい記録」・CSV） */
+  result(E){
+    const st = E.stat, sc = E.score, s = E.s, cfg = E.cfg, coop = E.isCoop();
+    const both = st.A.hit + st.B.hit;
+    const stars = t => st[t].hit - st[t].bonus;          // ふつうの 星（1こ 1てん）
+    const tnt = !!s.bomb;
+
+    const staff = [];
+    for(const t of ['A','B']){
+      const nm = t === 'A' ? cfg.nameA : cfg.nameB;
+      staff.push([nm, `ほし ${stars(t)}・ラッキースター ${st[t].bonus}こ（${st[t].bonusPts}点）` + (tnt ? `・TNT ${st[t].bad}` : '') + `・のがし ${st[t].miss}`]);
+    }
+    if(coop){ const c = E.coop; staff.push(['モンスター', `たおした ${c.defeated}・ダメージ ${c.damage}`]); }
+    if(E.swapCount) staff.push(['交代', `${E.swapCount}回`]);
+    const record = [
+      ['モード', coop ? '協力' : '対戦'],
+      ['点 あお', sc.A], ['点 あか', sc.B],
+      ['ほし あお', stars('A')], ['ほし あか', stars('B')],
+      ['ラッキースター あお（こ）', st.A.bonus], ['ラッキースター あか（こ）', st.B.bonus],
+      ['ラッキースター あお（点）', st.A.bonusPts], ['ラッキースター あか（点）', st.B.bonusPts],
+      ['TNT あお', st.A.bad], ['TNT あか', st.B.bad],
+      ['のがし あお', st.A.miss], ['のがし あか', st.B.miss],
+      ['モンスター たおした', coop ? E.coop.defeated : ''], ['ダメージ', coop ? E.coop.damage : ''],
+    ];
+
+    if(coop){
+      const c = E.coop;
+      const rows = [
+        { label:'ほし', value: stars('A') + stars('B'), icon:(g, w, h) => this.drawIcon(E, 'star', g, w, h) },
+      ];
+      if(s.lucky > 0 || st.A.bonus + st.B.bonus)
+        rows.push({ label:'ラッキースター', value: st.A.bonusPts + st.B.bonusPts, icon:(g, w, h) => this.drawIcon(E, 'lucky', g, w, h) });
+      return {
+        title: c.defeated > 0 ? (c.defeated === 1 ? 'モンスターを たおした！' : `モンスターを ${c.defeated}たい たおした！`) : 'あと ちょっと！',
+        color: c.defeated > 0 ? 'var(--gold)' : 'var(--ok)',
+        sub: c.defeated > 0 ? `みんなで あわせて ${both}こ とった！` : `モンスターの たいりょくを ${Math.round((1 - c.hpPct) * 100)}% けずった`,
+        rows, staff, record,
+      };
+    }
+
+    const a = sc.A, b = sc.B;
+    const det = t => `とった ${st[t].hit}こ` + (tnt ? ` ／ TNT ${st[t].bad}こ` : '');
+    return {
+      title: a === b ? 'ひきわけ！' : `${a > b ? cfg.nameA : cfg.nameB} の かち！`,
+      color: a === b ? 'var(--gold)' : (a > b ? 'var(--blue-lt)' : 'var(--red-lt)'),
+      sub: a === b ? 'どちらも よくがんばりました' : `${Math.max(a, b)} 対 ${Math.min(a, b)}`,
+      cards: [
+        { label:cfg.nameA, value:a, detail:det('A') },
+        { label:cfg.nameB, value:b, detail:det('B') },
+      ],
+      line: `みんなで あわせて ${both}こ とった！`,
+      staff, record,
+    };
+  },
+
+  /* 結果の 行の 絵（ゲームと 同じ 星・ダイヤ） */
+  drawIcon(E, kind, g, w, h){
+    const r = h*0.32;
+    if(E.isPixel()){
+      g.imageSmoothingEnabled = false;
+      const put = (tile, x) => g.drawImage(tile, Math.round(x - r), Math.round(h/2 - r), Math.round(r*2), Math.round(r*2));
+      if(kind === 'star'){ put(E.tiles.starA, w*0.32); put(E.tiles.starB, w*0.68); }
+      else put(E.tiles.bonus, w/2);
+      return;
+    }
+    if(kind === 'lucky'){ this.vectorGem(g, w/2, h/2, r, '#fbbf24'); return; }
+    for(const [x, col] of [[w*0.32, '#3b82f6'], [w*0.68, '#ef4444']]){
+      g.beginPath();
+      for(let i=0;i<10;i++){
+        const rad = i%2 ? r*0.46 : r, an = (Math.PI/5)*i - Math.PI/2;
+        const px = x + Math.cos(an)*rad, py = h/2 + Math.sin(an)*rad;
+        i ? g.lineTo(px, py) : g.moveTo(px, py);
+      }
+      g.closePath(); g.fillStyle = col; g.fill();
+      g.lineWidth = Math.max(2, r*0.12); g.strokeStyle = 'rgba(255,255,255,.92)'; g.stroke();
+    }
+  },
 };
 
 /* ============================================================================
@@ -2083,10 +2411,12 @@ const SEESAW_ART = {
 const SEESAW = {
   id:'seesaw',
   name:'シーソー・ボールしわけ',
+  teamScore: false,     // 協力ゲーム。ゲーム中の あお・あかの 点は 出さず、まんなかの「ふたりで ○てん」だけ
   tags:['両側協調','姿勢調整','共同注意','抑制'],
   desc:'ふたりの頭の高さでシーソーが傾きます。落ちてきたボールを、同じ色のかごへ転がして入れましょう。ひとりでは動かせません。勝ち負けはなく、2人で何個そろえられたかを数えます。',
   modes:['vs'],           // モンスター討伐は画面中央がぶつかるので対象外
   custom:true,
+  bgm:'yukkuri',          // BGM は ゆったりした 曲（ゆっくり 傾けて ねらう ゲームなので）
   teamLabels:['あおの かご','あかの かご'],   // 対戦ではないのでチーム名ではなく行き先を出す
 
   /* ---------------- ドット絵のボール（回転させるので自前で持つ） ---------------- */
@@ -2152,8 +2482,35 @@ const SEESAW = {
       bomb: this.mkBall('#55555f','#9a9aa6','#1d1d24','#ff5a52'),
       sA:   this.mkSpiky('#4a7fe0','#9dc0ff','#22407e','#eaf2ff'),
       sB:   this.mkSpiky('#d6423c','#ffa8a3','#7d2320','#ffecea'),
+      eA:   this.mkEgg('#bcd3ff','#e6efff','#3f63b0'),
+      eB:   this.mkEgg('#ffc1bd','#fff0ee','#b0423c'),
     };
     return this._tl;
+  },
+  /* たまご：ボールより うすい チームの いろ（ふつうの ボールと 形と こさで 見分ける）。
+     たて長の だ円（横 0.80・たて 1.0。上が すこし ほそい）。あたり判定は まるい ボールの まま */
+  EGG_RX: 0.80,
+  eggIn(dx, dy, r){
+    const k = dy < 0 ? 1 - 0.12 * (-dy / r) : 1;          // 上ほど ほそく
+    return (dx*dx) / ((r*this.EGG_RX*k)**2) + (dy*dy) / (r*r) <= 1;
+  },
+  mkEgg(base, mid, dark){
+    const N = this.PXB;
+    const c = document.createElement('canvas'); c.width = c.height = N;
+    const g = c.getContext('2d');
+    const cc = (N-1)/2, rad = N/2 - 0.3;
+    for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+      const dx = x-cc, dy = y-cc;
+      if(!this.eggIn(dx, dy, rad)) continue;
+      let edge = false;
+      for(const [ox,oy] of [[1,0],[-1,0],[0,1],[0,-1]]) if(!this.eggIn(dx+ox, dy+oy, rad)) edge = true;
+      const lit = (dx+dy) < -N*0.22, shd = (dx+dy) > N*0.30;
+      g.fillStyle = edge ? dark : lit ? mid : shd ? dark : base;
+      g.fillRect(x,y,1,1);
+    }
+    g.fillStyle = '#ffffff';                                // 光の 点
+    g.fillRect(Math.round(cc-3), Math.round(cc-4), 2, 2);
+    return c;
   },
   /* ---------------- イラストの 絵（テーマ「イラスト」の ときだけ。絵は SEESAW_ART） ---------------- */
   isIllust(){ return E.theme().id === 'illust'; },
@@ -2203,7 +2560,7 @@ const SEESAW = {
   },
 
   /* ボールに あう タイルと、ボクセルで 描く 大きさ（ドットが そろうよう 整数倍） */
-  tileOf(b){ return this.tiles()[b.toge ? 's' + b.kind : b.kind]; },
+  tileOf(b){ return this.tiles()[b.toge ? 's' + b.kind : b.egg ? 'e' + b.kind : b.kind]; },
   pixSize(b, r){
     if(b.toge) return Math.max(1, Math.round(r*2 / (this.PXS_R*2))) * this.PXS;
     return Math.max(this.PXB, Math.round(r*2/this.PXB)*this.PXB);
@@ -2252,6 +2609,11 @@ const SEESAW = {
       opts:[[0,'なし'],[1,'少し'],[2,'ふつう'],[3,'多い']], def:2 },
     { key:'holdSec', group:'bomb', label:'止めて解除する時間', quick:true,
       opts:[[2,'2秒'],[3,'3秒'],[4,'4秒'],[6,'6秒']], def:3 },
+    /* クロスタッチ（正中線交差）：ばくだんが シーソーに のっている あいだ、2人とも 反対の 手で 反対がわの 肩（ひざ）に
+       さわっていると 解除が すすむ。ひざは かがむので 頭が さがる → 2人で 同時に かがむと 水平の まま（タイミングを 合わせる） */
+    { key:'cross', group:'bomb', label:'クロスタッチ', quick:true,
+      opts:[[0,'なし'],[1,'肩'],[2,'ひざ']], def:0,
+      hint:'爆弾がシーソーにのっている間、2人とも反対の手で反対側の肩（ひざ）にさわると解除が進みます。手の色はスターキャッチと同じ（左手＝黄色・右手＝緑）' },
     /* とげとげボール：じぶんの いろの かべ（あお＝左・あか＝右）に とばすと はじけて +1。
        かごに 入れる ボールとは ちがう「いきおいよく 立つ」課題。0 のときは かべを 置かない */
     { key:'toge', group:'toge', label:'出す量', quick:true,
@@ -2262,14 +2624,27 @@ const SEESAW = {
       opts:[[0,'消えない'],[10,'長い（10秒）'],[6,'短い（6秒）']], def:0 },
     { key:'wallTgt', group:'toge', label:'壁の的', quick:true,
       opts:[[0,'なし'],[0.12,'大きい'],[0.08,'ふつう'],[0.05,'小さい']], def:0 },
+    /* たまご：あお・あかの たまごを 同じ いろの かごへ。シーソーを 速く 傾けると ひびが 入り、3だんめで 割れる。
+       とげとげ（一気に 立つ）と 反対の「ゆっくり・そっと」の 課題（力の 加減）。割れても 減点は なく、ボールを 落としたのと 同じ あつかい */
+    { key:'egg', group:'egg', label:'出す量', quick:true,
+      opts:[[0,'なし'],[1,'少し'],[2,'ふつう'],[3,'多い']], def:0 },
+    /* 割れやすさ＝たまごが 板の 上を 転がる 速さ（画面の 高さ／秒）の しきい値。2026-11-17 に 板の 傾く 速さ（eggTol）から かえた。
+       傾く 速さだと 一気に 傾けても 割れる 前に かごに 入って しまい、転がる 速さは「最後に どこまで 傾けたか」で きまるため。
+       転がりやすさ ふつうで 10度＝0.17・15度＝0.24・25度＝0.37 くらい（ほかの 転がりやすさでは tick で しきい値を 合わせる）。
+       古い 設定ファイルの eggTol は 使わない */
+    { key:'eggSpd', group:'egg', label:'割れやすさ', quick:true,
+      opts:[[0.32,'割れにくい'],[0.27,'ふつう'],[0.22,'割れやすい']], def:0.27,
+      hint:'たまごが速く転がるとひびが入り、3段目で割れます。傾けすぎずに、ちょうどよい角度で止めるのがこつです（ゆっくり傾けても、傾けすぎれば割れます）。ふつう：15度くらいまでは割れず、20度でひび2つ、25度で割れます' },
     { key:'basket', group:'kago', label:'大きさ', quick:true,
       opts:[[0.22,'大'],[0.17,'ふつう'],[0.12,'小']], def:0.17 },
     { key:'maxAngle', group:'seesaw', label:'最大の傾き', quick:true,
       opts:[[15,'15度'],[25,'25度'],[35,'35度'],[45,'45度']], def:25 },
     { key:'speed', group:'seesaw', label:'反応の速さ',
       opts:[[3,'ゆっくり'],[6,'ふつう'],[10,'速い']], def:6 },
+    /* 動きの感度：2人の 頭の 高さの 差（胴の 長さの 何本ぶんか）× 感度 で 最大の傾きに なる。
+       ふつう 1.7 ＝ 差が 胴の 0.6本ぶんで いっぱいに 傾く（2026-11-17 に 1.1 から 上げた。もっと 頭に 応じて 動かしたい） */
     { key:'gain', group:'seesaw', label:'動きの感度',
-      opts:[[0.7,'控えめ'],[1.1,'ふつう'],[1.7,'敏感']], def:1.1 },
+      opts:[[0.7,'控えめ'],[1.1,'やや控えめ'],[1.7,'ふつう'],[2.4,'敏感']], def:1.7 },
     { key:'wait', group:'flow', label:'次のボールまで',
       opts:[[5,'5秒'],[4,'4秒'],[3,'3秒'],[2,'2秒']], def:4 },
     { key:'preview', group:'flow', type:'toggle', quick:true, label:'次のボールの予告',
@@ -2282,6 +2657,7 @@ const SEESAW = {
     { id:'ball',   label:'ボール',   icon(c,w,h){ SEESAW.drawIcon('ball', c, w, h); } },
     { id:'bomb',   label:'爆弾',     icon(c,w,h){ SEESAW.drawIcon('bomb', c, w, h); } },
     { id:'toge',   label:'とげとげ', icon(c,w,h){ SEESAW.drawIcon('toge', c, w, h); } },
+    { id:'egg',    label:'たまご',   icon(c,w,h){ SEESAW.drawIcon('egg', c, w, h); } },
     { id:'kago',   label:'かご',     icon(c,w,h){ SEESAW.drawIcon('kago', c, w, h); } },
     { id:'seesaw', label:'シーソー', icon(c,w,h){ SEESAW.drawIcon('seesaw', c, w, h); } },
     { id:'flow',   label:'進行・表示', icon(c,w,h){ SEESAW.drawIcon('flow', c, w, h); } },
@@ -2297,6 +2673,9 @@ const SEESAW = {
       this.drawBall(fe, { kind:'bomb', spin:0 }, h*0.26, w*0.5, h*0.5);   // 赤い輪（半径の 1.6倍まで）が はみ出さない 大きさ
     }else if(kind === 'toge'){
       this.drawBall(fe, { kind:'A', toge:true, spin:0.2 }, h*0.27, w*0.5, h*0.5);   // とげ（半径の 1.62倍）が はみ出さない 大きさ
+    }else if(kind === 'egg'){
+      this.drawBall(fe, { kind:'A', egg:true, spin:-0.25, crack:0 }, h*0.3, w*0.36, h*0.5);
+      this.drawBall(fe, { kind:'B', egg:true, spin:0.25, crack:0.5 }, h*0.3, w*0.64, h*0.5);
     }else if(kind === 'kago'){
       const x0 = w*0.22, x1 = w*0.78, y0 = h*0.42, y1 = h*0.86, t = Math.max(4, h*0.07);
       c.fillStyle = 'rgba(10,10,14,.55)'; c.fillRect(x0, y0, x1-x0, y1-y0);
@@ -2323,9 +2702,9 @@ const SEESAW = {
     やさしい:   { desc:'大きいボール・大きいかご・爆弾なし',
       v:{maxAngle:35, speed:6, gain:1.1, ballR:0.058, fric:1.6, basket:0.22, wait:5, preview:false, balls:2, bombs:0, holdSec:2, toge:0, wallTgt:0} },
     ふつう:     { desc:'標準。爆弾は3秒で止める',
-      v:{maxAngle:25, speed:6, gain:1.1, ballR:0.044, fric:1.6, basket:0.17, wait:4, preview:false, balls:2, bombs:2, holdSec:3, wallTgt:0} },
+      v:{maxAngle:25, speed:6, gain:1.7, ballR:0.044, fric:1.6, basket:0.17, wait:4, preview:false, balls:2, bombs:2, holdSec:3, wallTgt:0} },
     むずかしい: { desc:'小さいボール・よく転がる・爆弾4秒',
-      v:{maxAngle:15, speed:10, gain:1.7, ballR:0.032, fric:0.7, basket:0.12, wait:3, preview:false, balls:2, bombs:2, holdSec:4, wallTgt:0} },
+      v:{maxAngle:15, speed:10, gain:2.4, ballR:0.032, fric:0.7, basket:0.12, wait:3, preview:false, balls:2, bombs:2, holdSec:4, wallTgt:0} },
   },
 
   /* ---------------- 画面のかたち ---------------- */
@@ -2357,6 +2736,8 @@ const SEESAW = {
       ball:null, next:null, wait:0, phase:'ready',
       flash:null, combo:0, run:0, last:null, lastBomb:true, bag:[], tick:-1,   // lastBomb:true＝1こめは ばくだんに しない
       lastToge:true, togePool:null, togeSkip:false, bombSkip:false,                           // lastToge:true＝1こめは とげとげに しない
+      crossSide:'R', cross:null,    // クロスタッチ（さいしょの ばくだんで 'L'＝右手で 左の 肩・ひざ に なる）
+      eggPool:null, eggSkip:false, eggN:0, eggOk:0, eggBroke:0,   // たまご：出た／とどけた／われた
       // 2人ぶんの記録（勝敗ではなく「そろえた数」を数える）
       okA:0, okB:0, defused:0, wrong:0, dropped:0, bombFail:0, best:0,
       // とげとげ：かべに とどいた／まとに あたった／とどかなかった（かご・ゆか・しぼんだ。しっぱいには 数えない）
@@ -2370,11 +2751,16 @@ const SEESAW = {
   },
   start(E){
     if(!this.st) this.reset(E);
+    this.dm = null;          // 説明デモの 人形を 外して、カメラ（または お試しの マウス）で 動かす
     this.recalib();
     this.st.started = true;
   },
-  /* 基準を 取り直す（1秒「まっすぐ たってね」。そのあいだ ボールは 止まる） */
+  /* 基準を 取り直す。PREP 秒「まっすぐ たってね」で 立つ じゅんびを してもらい（頭の 輪で うつっているかが 見える）、
+     そのあと 1秒で 測る。そのあいだ ボールは 止まる。
+     2026-11-17 までは じゅんび なしで、カウントダウンの こい 幕が 消えた しゅんかんに 測っていた */
+  PREP: 2.0,
   recalib(){
+    this.st.prep = this.PREP;
     this.st.calib = 1.0;
     this.st.samples = {A:[], B:[]};
     this.st.base = {A:null, B:null};
@@ -2394,6 +2780,15 @@ const SEESAW = {
     return v[Math.floor((v.length-1)*0.25)];
   },
   SHRINK: 0.4,    // とげとげが しぼんで 消えるまでの 秒数
+  /* たまごの ひびの たまる はやさ。板の 上を 転がる 速さが「割れやすさ」を こえた ぶんに 比例して たまる（1 で 割れる）。
+     落ちてきて 板に のった しゅんかんの はずみで ひびが 入らないよう、のってから EGG_SETTLE 秒は 見ない */
+  EGG_RATE: 6.0,
+  EGG_SETTLE: 0.3,
+  /* たまごが 板に そって 転がる 速さ（画面の 高さ／秒） */
+  eggSpeed(b, E){ const a = this.st.angle; return Math.abs(b.vx * Math.cos(a) + b.vy * Math.sin(a)) / E.H; },
+  /* 割れる 速さ。「転がりやすさ」で 同じ 角度でも 速さが かわる（よく転がる 15度 ≒ ふつう 25度）ので、
+     割れる 角度が かわらないよう しきい値も 合わせる（カメラなしの 計算で 0.45乗が いちばん そろった） */
+  eggTol(s){ return (s.eggSpd || 0.27) * Math.pow(1.6 / (s.fric || 1.6), 0.45); },
   UP_DEV: 0.35,   // 基準より 胴の長さ×これ だけ 高い まま…
   UP_SEC: 1.5,    // …この秒数 つづいたら、基準が 低すぎたとみて いまの 高さに 取り直す
 
@@ -2416,17 +2811,19 @@ const SEESAW = {
     const st = this.st;
     const bombOn = E ? this.bombsOf(E.s) : 0;
     const toge   = E ? (E.s.toge || 0) : 0;
+    const egg    = E ? (E.s.egg || 0) : 0;
     let balls    = E ? (E.s.balls ?? 2) : 2;
-    if(!balls && !bombOn && !toge) balls = 2;    // ぜんぶ なしでは 何も 落ちてこないので、ボールを ふつうで 出す
+    if(!balls && !bombOn && !toge && !egg) balls = 2;    // ぜんぶ なしでは 何も 落ちてこないので、ボールを ふつうで 出す
     for(;;){
       // 「すこし」は 2ふくろに 1こなので、ほかが なしだと からの ふくろが できる。そのときは もう1ふくろ
-      if(!st.bag || !st.bag.length){ st.bag = this.fillBag(bombOn, toge, balls); continue; }
+      if(!st.bag || !st.bag.length){ st.bag = this.fillBag(bombOn, toge, balls, egg); continue; }
       const k = st.bag.shift();
       if(k === 'bomb' && !bombOn) continue;     // とちゅうで ばくだんを 切ったときの のこりは すてる
       if(k[0] === 's' && !toge)  continue;      // とげとげも おなじ
+      if(k[0] === 'e' && !egg)   continue;      // たまごも おなじ
       if((k === 'A' || k === 'B') && !balls) continue;   // かごに いれる ボールも おなじ
       if(k === 'bomb'){ st.lastBomb = true; st.lastToge = false; return k; }
-      const col = k[0] === 's' ? k[1] : k;
+      const col = k.length > 1 ? k[1] : k;      // 'sA'／'eA' の いろは 2もじめ
       st.run = (col === st.last) ? st.run + 1 : 1; st.last = col; st.lastBomb = false;
       st.lastToge = k[0] === 's';
       return k;
@@ -2438,7 +2835,14 @@ const SEESAW = {
     if(!st.togePool || !st.togePool.length) st.togePool = Math.random() < 0.5 ? ['sA','sB'] : ['sB','sA'];
     return st.togePool.shift();
   },
-  fillBag(bombOn, toge, balls = 2){
+  /* たまごの 色も 同じように あお・あかを 交互に ならす */
+  eggColor(){
+    const st = this.st;
+    if(!st.eggPool || !st.eggPool.length) st.eggPool = Math.random() < 0.5 ? ['eA','eB'] : ['eB','eA'];
+    return st.eggPool.shift();
+  },
+  /* たまごの 数は とげとげと 同じ：「すこし」＝2ふくろに 1こ・「ふつう」＝1こ・「おおい」＝2こ（あおと あか 1こずつ） */
+  fillBag(bombOn, toge, balls = 2, egg = 0){
     const st = this.st;
     const items = this.BALLS[balls] ? this.BALLS[balls].slice() : ['A','A','B','B'];
     if(bombOn >= 3){ items.push('bomb', 'bomb'); }
@@ -2447,8 +2851,11 @@ const SEESAW = {
     if(toge >= 3){ items.push('sA', 'sB'); }
     else if(toge === 2){ items.push(this.togeColor()); }
     else if(toge === 1){ st.togeSkip = !st.togeSkip; if(!st.togeSkip) items.push(this.togeColor()); }
+    if(egg >= 3){ items.push('eA', 'eB'); }
+    else if(egg === 2){ items.push(this.eggColor()); }
+    else if(egg === 1){ st.eggSkip = !st.eggSkip; if(!st.eggSkip) items.push(this.eggColor()); }
     // ばくだんだけ・とげとげだけの ときは「連続しない」を 外す（あいだに はさむものが ない）
-    const free = { bomb: !balls && !toge, toge: !balls && !bombOn };
+    const free = { bomb: !balls && !toge && !egg, toge: !balls && !bombOn && !egg };
     let bag = items;
     for(let tries=0; tries<300; tries++){
       bag = items.slice();
@@ -2461,7 +2868,7 @@ const SEESAW = {
     let last = st.last, run = st.run, prevBomb = st.lastBomb, prevToge = st.lastToge;
     for(const k of bag){
       if(k === 'bomb'){ if(prevBomb && !free.bomb) return false; prevBomb = true; prevToge = false; continue; }
-      const toge = k[0] === 's', col = toge ? k[1] : k;
+      const toge = k[0] === 's', col = k.length > 1 ? k[1] : k;
       if(toge && prevToge && !free.toge) return false;
       run = (col === last) ? run + 1 : 1; last = col; prevBomb = false; prevToge = toge;
       if(run > 2) return false;
@@ -2480,8 +2887,35 @@ const SEESAW = {
       const hip = (lms[23].y + lms[24].y)/2;
       const torso = Math.max(0.06, Math.abs(hip - sho));
       const team = E.teamOfPose(lms);
-      const cand = { y: nose.y, x: 1-nose.x, torso };
+      const cand = { y: nose.y, x: 1-nose.x, torso, lms };     // lms は クロスタッチで 手首・肩・ひざを 見るため
       if(!out[team] || cand.torso > out[team].torso) out[team] = cand;
+    }
+    return out;
+  },
+
+  /* ---------------- クロスタッチ（正中線交差） ---------------- */
+  /* st.crossSide が 'L' なら 右手（緑）で 左の 肩・ひざ、'R' なら 左手（黄色）で 右の 肩・ひざ。
+     画面は 鏡うつしなので、その人の 左は 画面でも 左に 見える。
+     手首と さわる ところの きょりが 胴の長さ×CROSS_R 以内なら「さわっている」。
+     うつっていない人・さわる ところが 見えていない人は ノーカウント（その人の せいで 止めない・README §7）。
+     だれも 見えていない（カメラなしの お試し）ときは さわっている ことに する */
+  CROSS_R: 0.6,
+  crossState(E){
+    const st = this.st, lv = E.s.cross;
+    const left = st.crossSide === 'L';
+    const tgtI  = lv >= 2 ? (left ? 25 : 26) : (left ? 11 : 12);   // ひざ：25/26・肩：11/12
+    const handI = left ? E.L.RWRI : E.L.LWRI;
+    const out = { hand: left ? 'right' : 'left', part: lv >= 2 ? 'ひざ' : 'かた', ok: true };
+    for(const t of ['A','B']){
+      const h = st.head[t];
+      if(!h || !h.lms || (!E.poses.length && !this.dm)){ out[t] = null; continue; }   // 説明デモでは 人形の 手を 見る
+      const T = h.lms[tgtI], W = h.lms[handI];
+      if(!T || (T.visibility ?? 1) < 0.3){ out[t] = null; continue; }
+      const tx = (1-T.x)*E.W, ty = T.y*E.H, wx = (1-W.x)*E.W, wy = W.y*E.H;
+      const rr = this.CROSS_R * h.torso * E.H;
+      const ok = Math.hypot(wx - tx, wy - ty) < rr;
+      out[t] = { tx, ty, wx, wy, rr, ok };
+      if(!ok) out.ok = false;
     }
     return out;
   },
@@ -2492,7 +2926,9 @@ const SEESAW = {
     const st = this.st, s = E.s, g = this.geo(E);
 
     /* --- 入力：頭の高さ → 傾き --- */
-    if(st.calib > 0){
+    if(st.prep > 0){
+      st.prep -= dt;          // じゅんび：頭の 輪は 出すが、まだ 測らない
+    }else if(st.calib > 0){
       st.calib -= dt;
       if(st.calib <= 0){
         for(const t of ['A','B']) st.base[t] = this.baseOf(st.samples[t]);
@@ -2511,10 +2947,14 @@ const SEESAW = {
         }
       }
     }
-    if(E.poses.length){
+    if(this.dm){
+      /* 説明デモ：人形の 頭の 高さ（st.dev）を 台本が 決める。そこから 先は 本物の ゲームと 同じ */
+      this.dm.drive(dt, E, g);
+      st.target = Math.max(-g.maxA, Math.min(g.maxA, (st.dev.A - st.dev.B) * s.gain * g.maxA));
+    }else if(E.poses.length){
       const h = h0;
       st.head = h;
-      if(st.calib > 0) for(const t of ['A','B']) if(h[t]) st.samples[t].push(h[t].y);
+      if(st.calib > 0 && !(st.prep > 0)) for(const t of ['A','B']) if(h[t]) st.samples[t].push(h[t].y);
       for(const t of ['A','B']){
         if(h[t] && st.base[t] != null){
           /* 基準を 取るときに うごいてしまって 低く 取れた子は、立っているだけで
@@ -2550,14 +2990,17 @@ const SEESAW = {
     if(st.phase === 'ready'){
       st.wait -= dt;
       if(st.wait <= 0){
-        const nk = st.next, toge = nk[0] === 's';
+        const nk = st.next, toge = nk[0] === 's', egg = nk[0] === 'e';
+        if(egg) st.eggN++;
         st.ball = {
-          kind: toge ? nk[1] : nk,          // とげとげも kind は 'A'／'B'（色＝行き先の 向き）
-          toge,
+          kind: toge || egg ? nk[1] : nk,   // とげとげ・たまごも kind は 'A'／'B'（色＝行き先の 向き）
+          toge, egg, crack:0, wob:0,
           x: g.pivotX + (Math.random()*2-1) * E.W*0.03,
           y: -g.r, vx:0, vy:0, r:g.r,
           spin:0, spinV:0, hold:0, onBeam:false, age:0,
         };
+        // クロスタッチの 左右は ばくだんごとに 入れかえる（右手→左の 肩、つぎは 左手→右の 肩）
+        if(nk === 'bomb') st.crossSide = st.crossSide === 'L' ? 'R' : 'L';
         st.next = this.pickNext(E);
         st.phase = 'live';
       }
@@ -2575,11 +3018,36 @@ const SEESAW = {
         /* ばくだん：シーソーの上にとどまっているあいだ処理が進む */
         if(b.kind === 'bomb'){
           const need = s.holdSec;
-          if(b.onBeam) b.hold = Math.min(need, b.hold + dt);
+          // クロスタッチ：のっていても 2人が さわっていない あいだは すすまない（へらしも しない）
+          st.cross = s.cross > 0 ? this.crossState(E) : null;
+          b.crossOk = !st.cross || st.cross.ok;
+          if(b.onBeam){ if(b.crossOk) b.hold = Math.min(need, b.hold + dt); }
           else         b.hold = Math.max(0, b.hold - dt*0.5);   // 少し跳ねたくらいでは戻らない
           const sec = Math.ceil(need - b.hold);
           if(b.onBeam && sec !== st.tick && sec > 0){ st.tick = sec; }
           if(b.hold >= need) this.defuse(E, b);
+        }
+
+        /* たまご：シーソーの 上を「割れやすさ」より 速く 転がると ひびが すすむ（もどらない）。
+           傾けすぎると 速く 転がるので、ちょうど よい 角度で 止める 課題に なる。
+           こえた ぶんに 比例して たまるので、少し こえるくらいなら ひびで すむ。1/3・2/3 で ひびが ふえ、1 で 割れる */
+        if(b.egg){
+          b.wob = Math.max(0, b.wob - dt);
+          // はげしく ゆらすと 板の 上で 小さく はねて 離れるので、離れて 0.3秒までは のっている ことに する
+          b.offT = b.onBeam ? 0 : (b.offT ?? 9) + dt;
+          b.beamT = b.onBeam ? (b.beamT || 0) + dt : (b.beamT || 0);
+          // 板に そった 速さ（落ちてきた ときの たての 速さは 板に のった しゅんかんに 消えるが、念のため のってから EGG_SETTLE 秒は 見ない）
+          const v = this.eggSpeed(b, E), tol = this.eggTol(s);
+          if(b.offT < 0.3 && b.beamT > this.EGG_SETTLE && v > tol){
+            const was = Math.floor(b.crack * 3);
+            b.crack += (v - tol) / tol * dt * this.EGG_RATE;
+            b.wob = 0.35;
+            if(b.crack >= 1){ this.eggBreak(E, b); }
+            else if(Math.floor(b.crack * 3) > was){
+              E.floatText(b.x, b.y - b.r*2.2, 'そっと！', '#ffe08a');
+              E.beep(330, 0.06, 'square', 0.3);
+            }
+          }
         }
 
         /* とげとげの のこる じかん。「ずっと」(0) なら 消えない（とどめて 呼吸を 合わせて とばす やりとりを のこす）。
@@ -2606,7 +3074,7 @@ const SEESAW = {
     /* はじけた とげの うごき */
     for(const p of st.fx){
       p.life += dt;
-      if(p.t === 'shard'){ p.vy += E.H*1.5*dt; p.x += p.vx*dt; p.y += p.vy*dt; }
+      if(p.t === 'shard' || p.t === 'shell'){ p.vy += E.H*1.5*dt; p.x += p.vx*dt; p.y += p.vy*dt; }
     }
     st.fx = st.fx.filter(p => p.life < p.max);
   },
@@ -2797,8 +3265,29 @@ const SEESAW = {
     E.burst(b.x, b.y, '#5bbd4a', 34);
     E.sfx.bonus();
     st.defused++; st.combo++; st.best = Math.max(st.best, st.combo);
+    E.floatText(b.x, b.y - b.r*1.6, '+1', '#fff');            // 結果の「ばくだん ○てん」と そろえる
     this.cheer(E, b.x, b.y, '#5bbd4a');
     st.flash = { t:1.4, ok:true, text:'かいじょ！' };
+    st.ball = null; st.phase = 'ready'; st.wait = E.s.wait; st.tick = -1;
+  },
+
+  /* --- たまごが 割れた。ボールを 落としたのと 同じ あつかい（れんぞくは 切れる・減点は なし）。
+     黄みが ひろがり、からの かけらが とびちる（見た目は drawTogeFx の 'yolk'／'shell'） --- */
+  eggBreak(E, b){
+    const st = this.st;
+    st.eggBroke++; st.combo = 0;
+    E.miss(b.kind);
+    st.fx.push({ t:'yolk', x:b.x, y:b.y, life:0, max:1.2, r:b.r });
+    const col = b.kind === 'A' ? '#bcd3ff' : '#ffc1bd';
+    for(let i=0;i<6;i++){
+      const a = -Math.PI/2 + (i/5 - 0.5) * Math.PI * 1.3, v = E.H * (0.35 + Math.random()*0.2);
+      st.fx.push({ t:'shell', x:b.x, y:b.y, vx:Math.cos(a)*v, vy:Math.sin(a)*v,
+                   rot:a, vr:(Math.random()-0.5)*10, life:0, max:0.8, r:b.r, col });
+    }
+    E.beep(180, 0.12, 'square', 0.35);
+    setTimeout(()=>E.beep(120, 0.10, 'triangle', 0.3), 60);
+    E.floatText(b.x, b.y - b.r*2, 'われちゃった', '#ffe08a');
+    st.flash = { t:1.3, ok:false, text:'われちゃった　そっと はこぼう', color:'#ffe08a' };
     st.ball = null; st.phase = 'ready'; st.wait = E.s.wait; st.tick = -1;
   },
 
@@ -2814,6 +3303,9 @@ const SEESAW = {
   settle(E, side){
     const st = this.st, b = st.ball;
 
+    // たまごが 床に 落ちたら 割れる（あつかいは「おとした」と 同じ。数は われた に 入る）
+    if(b.egg && !side){ this.eggBreak(E, b); return; }
+
     if(b.toge){
       // とげとげが かごに 入った／落ちた：「おしい」。点なし・れんぞくは 切らない・しっぱいに 数えない
       st.togeMiss++;
@@ -2822,7 +3314,8 @@ const SEESAW = {
     }else if(b.kind === 'bomb'){
       st.combo = 0; st.bombFail++;
       if(side){
-        E.award(side, -1, 'bad', b.x, b.y);       // 入れてしまったかごの数が1つ減る
+        // 点は へらさない（結果は できた ことだけを 数える）。かごに たまった ボールが 1つ とぶ 見た目だけ のこす
+        E.burst(b.x, b.y, '#ef4444', 22); E.floatText(b.x, b.y, 'あっ', '#fca5a5'); E.sfx.bad();
         st.stack[side] = Math.max(0, st.stack[side] - 1);
         st.flash = { t:1.4, ok:false, text:'ばくだんを かごに 入れてしまった' };
       }else{
@@ -2833,6 +3326,7 @@ const SEESAW = {
     }else if(side && side === b.kind){
       st.combo++; st.best = Math.max(st.best, st.combo);
       if(b.kind === 'A') st.okA++; else st.okB++;
+      if(b.egg) st.eggOk++;
       E.award(b.kind, 1, 'good', b.x, b.y);
       this.cheer(E, b.x, b.y, b.kind === 'A' ? '#5b8ff0' : '#e0534c');
       st.stack[side]++; st.pop[side] = 0.45;
@@ -2852,52 +3346,74 @@ const SEESAW = {
   /* ---------------- ゲーム中の合計 ---------------- */
   hudTotal(){
     const st = this.st; if(!st) return '';
-    return `ふたりで ${st.okA + st.okB + st.defused + st.togeOk}こ`;
+    return `ふたりで ${this.points(st).total}てん`;
   },
 
-  /* ---------------- 結果（勝ち負けではなく、2人でいくつそろえたか） ---------------- */
+  /* ---------------- 点（ゲーム中に 出る「+1」と 同じ 数え方。へらさない） ----------------
+     ボール 1つ 1てん（たまごは べつに 数える）・たまご 1つ 1てん・ばくだん かいじょ 1てん・
+     とげとげ とどいて 1てん、まとに 当たれば もう 1てん */
+  points(st){
+    const egg  = st.eggOk || 0;
+    const ball = (st.okA || 0) + (st.okB || 0) - egg;
+    const bomb = st.defused || 0;
+    const toge = (st.togeOk || 0) + (st.togeTgt || 0);
+    return { ball, egg, bomb, toge, total: ball + egg + bomb + toge };
+  },
+
+  /* ---------------- 結果（勝ち負けでも あお・あか べつでもなく、ふたりで 何点 とれたか） ----------------
+     子どもが 見るのは 合計と、使った ものごと（ボール・ばくだん・とげとげ・たまご）ごとの 点だけ。
+     しっぱいの 数・せいこう率は 職員用（「詳しい記録」で 開く・「記録を保存」で CSV に） */
   result(E){
     const st = this.st || {};
-    const ok    = (st.okA||0) + (st.okB||0) + (st.defused||0) + (st.togeOk||0);
+    const pt = this.points(st);
+    const n = k => st[k] || 0;
     // とげとげが とどかなかったのは「おしい」。しっぱいには 数えない
-    const fails = (st.wrong||0) + (st.dropped||0) + (st.bombFail||0);
-    const all   = ok + fails;
-    const rate  = all ? Math.round(ok/all*100) : 0;
+    const fails = n('wrong') + n('dropped') + n('bombFail') + n('eggBroke');
+    const okN   = n('okA') + n('okB') + n('defused') + n('togeOk');
+    const rate  = okN + fails ? Math.round(okN / (okN + fails) * 100) : 0;
 
-    // 「かごに いれる ボール」を なしに した 練習では、かごの 数や「ちがう色・おとした」は 出さない
-    const bombs = this.bombsOf(E.s), toge = E.s.toge > 0;
-    const ballsOn = (E.s.balls ?? 2) > 0 || (!bombs && !toge);
+    // 出てくる 行は、その回の 設定で 使った ものごと（とちゅうで 設定を かえて 点が ある ものも 出す）
+    const s = E.s, bombs = this.bombsOf(s) > 0, toge = s.toge > 0, egg = s.egg > 0;
+    const ballsOn = (s.balls ?? 2) > 0 || (!bombs && !toge && !egg);   // ぜんぶ なしの ときは ボールが 出る（pickNext）
+    const icon = k => (c, w, h) => SEESAW.drawIcon(k, c, w, h);
+    const rows = [];
+    if(ballsOn || pt.ball) rows.push({ label:'ボール',   value:pt.ball, icon:icon('ball') });
+    if(bombs || pt.bomb)   rows.push({ label:'ばくだん', value:pt.bomb, icon:icon('bomb') });
+    if(toge || pt.toge)    rows.push({ label:'とげとげ', value:pt.toge, icon:icon('toge') });
+    if(egg || pt.egg)      rows.push({ label:'たまご',   value:pt.egg,  icon:icon('egg') });
 
-    let sub;
-    if(!all && !st.togeMiss) sub = 'ボールが 来ませんでした';
-    else if(st.best >= 3)   sub = `いちばん つづいたのは ${st.best}かい れんぞく　／　せいこう率 ${rate}%`;
-    else if(ok > 0)         sub = `せいこう率 ${rate}%　ふたりで 力を合わせました`;
-    else                    sub = 'つぎは きっと そろえられます';
+    const came = okN + fails + n('togeMiss');
+    const sub = !came ? 'ボールが 来ませんでした'
+              : n('best') >= 3 ? `いちばん つづいたのは ${n('best')}かい れんぞく`
+              : pt.total > 0 ? 'ふたりで 力を 合わせました' : 'つぎは きっと できるよ';
 
-    // 内訳は「どんな間違え方をしたか」が分かる形にする（観察の手がかりになる）
-    const parts = ballsOn ? [`ちがう色 ${st.wrong||0}`, `おとした ${st.dropped||0}`] : [];
-    if(bombs) parts.push(`ばくだん ${st.bombFail||0}`);
-    const cards = ballsOn ? [
-      { label:'あおの かごへ', value: st.okA||0, detail:'そろえた かず' },
-      { label:'あかの かごへ', value: st.okB||0, detail:'そろえた かず' },
-    ] : toge ? [     // カードは 2まい ならぶので、とげとげは かべの 色で わける
-      { label:'あおの かべへ', value: (st.togeBy||{}).A||0, detail:'とげとげが とどいた かず' },
-      { label:'あかの かべへ', value: (st.togeBy||{}).B||0, detail:'とげとげが とどいた かず' },
-    ] : [            // ばくだんだけの 練習
-      { label:'ばくだん', value: st.defused||0, detail:'かいじょ した かず' },
-      { label:'いちばん つづいた', value: st.best||0, detail:'れんぞく' },
+    // 職員用の 表（観察の 手がかり：どんな 間違え方を したか・いきおいよく 立てたか・ゆっくり 動けたか）
+    const togeN = n('togeOk') + n('togeMiss');
+    const staff = [
+      ['成功率', `${rate}%（できた ${okN}・しっぱい ${fails}）`],
+      ['いちばん続いた', `${n('best')}回 連続`],
     ];
+    if(ballsOn || pt.ball) staff.push(['ボール', `入れた ${pt.ball}・ちがう色 ${n('wrong')}・落とした ${n('dropped')}`]);
+    if(bombs || pt.bomb)   staff.push(['ばくだん', `解除 ${n('defused')}・しっぱい ${n('bombFail')}`]);
+    if(toge || pt.toge)    staff.push(['とげとげ', `とどいた ${n('togeOk')}／${togeN}` + (s.wallTgt > 0 ? `（的 ${n('togeTgt')}）` : '')]);
+    if(egg || pt.egg)      staff.push(['たまご', `とどけた ${n('eggOk')}／${n('eggN')}・割れた ${n('eggBroke')}`]);
+    if(egg && ballsOn)     staff.push(['', '※ たまごを ちがう色の かごに 入れたのは「ちがう色」に 入る']);
+
+    // CSV の 列は 設定に かかわらず いつも 同じ（ファイルを あとで つなげて 見られるように）
+    const record = [
+      ['合計（点）', pt.total], ['ボール（点）', pt.ball], ['ばくだん（点）', pt.bomb],
+      ['とげとげ（点）', pt.toge], ['たまご（点）', pt.egg],
+      ['成功率（%）', rate], ['いちばん続いた（回）', n('best')],
+      ['ちがう色', n('wrong')], ['落とした', n('dropped')],
+      ['ばくだん解除', n('defused')], ['ばくだん失敗', n('bombFail')],
+      ['とげとげ とどいた', n('togeOk')], ['とげとげ とどかず', n('togeMiss')], ['とげとげ 的', n('togeTgt')],
+      ['たまご 出た', n('eggN')], ['たまご とどけた', n('eggOk')], ['たまご 割れた', n('eggBroke')],
+    ];
+
     return {
-      title: ok > 0 ? `ふたりで ${ok}こ そろえた！` : 'ふたりで ちょうせん しました',
-      color: ok > 0 ? 'var(--gold)' : 'var(--ok)',
-      sub,
-      cards,
-      // とげとげは「なんこ とんで なんこ とどいたか」を 出す（いきおいよく 立てたかの 観察の 手がかり）
-      line: (toge ? `とげとげ かべに とどいた ${st.togeOk||0}／${(st.togeOk||0) + (st.togeMiss||0)}こ`
-                    + (E.s.wallTgt > 0 ? `（まと ${st.togeTgt||0}かい）` : '') : '')
-          + (toge && (bombs || parts.length) ? '　／　' : '')
-          + (bombs ? `ばくだん かいじょ ${st.defused||0}かい` : '')
-          + (parts.length ? (bombs ? '　／　' : '') + `しっぱい ${fails}かい（${parts.join('　')}）` : ''),
+      title: pt.total > 0 ? `ふたりで ${pt.total}てん！` : 'ふたりで ちょうせん しました',
+      color: pt.total > 0 ? 'var(--gold)' : 'var(--ok)',
+      sub, rows, staff, record,
     };
   },
 
@@ -2913,6 +3429,44 @@ const SEESAW = {
       const k = 1 + Math.sin(performance.now()/240)*0.10;
       ctx.beginPath(); ctx.arc(0, 0, r*1.45*k, 0, Math.PI*2);
       ctx.lineWidth = Math.max(3, r*0.16); ctx.strokeStyle = 'rgba(255,90,82,.8)'; ctx.stroke();
+    }
+    /* たまご（イラストの 絵は まだ ないので、イラストでも くっきりの 絵で 描く）。
+       ひびが 入った しゅんかんは ぐらぐら ゆれる（wob） */
+    if(b.egg){
+      if(b.wob > 0) ctx.rotate(Math.sin(performance.now()/40) * 0.2 * (b.wob/0.35));
+      ctx.rotate(b.spin);
+      if(pixel){
+        const s = this.pixSize(b, r);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(this.tileOf(b), -s/2, -s/2, s, s);
+      }else{
+        const ec = b.kind === 'A' ? ['#bcd3ff','#e6efff','#3f63b0'] : ['#ffc1bd','#fff0ee','#b0423c'];
+        const gr = ctx.createRadialGradient(-r*0.25, -r*0.4, r*0.1, 0, 0, r*1.05);
+        gr.addColorStop(0, ec[1]); gr.addColorStop(0.55, ec[0]); gr.addColorStop(1, ec[2]);
+        ctx.beginPath();
+        ctx.moveTo(0, -r);
+        ctx.bezierCurveTo( r*0.62, -r,  r*this.EGG_RX,  r*0.15, r*this.EGG_RX*0.98, r*0.3);
+        ctx.bezierCurveTo( r*0.75,  r*0.85,  r*0.4,  r,  0, r);
+        ctx.bezierCurveTo(-r*0.4,  r, -r*0.75,  r*0.85, -r*this.EGG_RX*0.98, r*0.3);
+        ctx.bezierCurveTo(-r*this.EGG_RX,  r*0.15, -r*0.62, -r, 0, -r);
+        ctx.closePath();
+        ctx.fillStyle = gr; ctx.fill();
+        ctx.lineWidth = Math.max(2, r*0.11); ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.stroke();
+      }
+      const n = Math.floor((b.crack || 0) * 3);            // ひびの だん（0〜2）
+      if(n > 0){
+        ctx.strokeStyle = '#3a2e22'; ctx.lineWidth = Math.max(2, r*0.09);
+        ctx.lineCap = pixel ? 'butt' : 'round'; ctx.lineJoin = pixel ? 'miter' : 'round';
+        const zz = [[[-0.55,-0.35],[-0.2,-0.15],[-0.3,0.1],[0.05,0.25]],
+                    [[0.6,-0.1],[0.3,0.05],[0.42,0.32],[0.1,0.5]]];
+        for(let i=0;i<n;i++){
+          ctx.beginPath();
+          zz[i].forEach(([px, py], j) => j ? ctx.lineTo(px*r, py*r) : ctx.moveTo(px*r, py*r));
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+      return;
     }
     const artKey = b.toge ? 's' + b.kind : b.kind;
     if(!pixel && this.isIllust() && this.artOk(artKey)){
@@ -2942,6 +3496,43 @@ const SEESAW = {
     }
     ctx.restore();
   },
+  /* クロスタッチの 印。さわる ところに 手の 色の 輪（脈うつ）、つかう 手首に 同じ 色の 点、そのあいだに うすい 線。
+     さわれたら 輪を ぬりつぶす。ボクセルテーマでは 四角で 描く */
+  drawCross(E, cr, now){
+    const ctx = E.ctx, pixel = E.isPixel(), col = HAND_COL[cr.hand];
+    const k = 1 + Math.sin(now/200)*0.12;
+    for(const t of ['A','B']){
+      const p = cr[t]; if(!p) continue;
+      const R = Math.max(E.H*0.035, p.rr*0.55) * (p.ok ? 1 : k);
+      const lw = Math.max(3, E.H*0.008), dr = Math.max(6, E.H*0.018);
+      ctx.save();
+      if(!p.ok){
+        ctx.globalAlpha = 0.55; ctx.strokeStyle = col; ctx.lineWidth = Math.max(2, lw*0.5);
+        ctx.setLineDash([lw*2, lw*2]);
+        ctx.beginPath(); ctx.moveTo(p.wx, p.wy); ctx.lineTo(p.tx, p.ty); ctx.stroke();
+        ctx.setLineDash([]); ctx.globalAlpha = 1;
+      }
+      ctx.lineWidth = lw*2.2; ctx.strokeStyle = 'rgba(10,10,14,.7)';
+      if(pixel) ctx.strokeRect(Math.round(p.tx-R), Math.round(p.ty-R), Math.round(R*2), Math.round(R*2));
+      else { ctx.beginPath(); ctx.arc(p.tx, p.ty, R, 0, Math.PI*2); ctx.stroke(); }
+      ctx.lineWidth = lw; ctx.strokeStyle = col; ctx.fillStyle = col;
+      ctx.globalAlpha = p.ok ? 0.55 : 1;
+      if(pixel){
+        if(p.ok) ctx.fillRect(Math.round(p.tx-R), Math.round(p.ty-R), Math.round(R*2), Math.round(R*2));
+        ctx.globalAlpha = 1;
+        ctx.strokeRect(Math.round(p.tx-R), Math.round(p.ty-R), Math.round(R*2), Math.round(R*2));
+        ctx.fillStyle = 'rgba(10,10,14,.8)'; ctx.fillRect(Math.round(p.wx-dr-2), Math.round(p.wy-dr-2), dr*2+4, dr*2+4);
+        ctx.fillStyle = col; ctx.fillRect(Math.round(p.wx-dr), Math.round(p.wy-dr), dr*2, dr*2);
+      }else{
+        ctx.beginPath(); ctx.arc(p.tx, p.ty, R, 0, Math.PI*2);
+        if(p.ok) ctx.fill();
+        ctx.globalAlpha = 1; ctx.stroke();
+        ctx.beginPath(); ctx.arc(p.wx, p.wy, dr, 0, Math.PI*2);
+        ctx.lineWidth = lw*0.8; ctx.strokeStyle = 'rgba(10,10,14,.8)'; ctx.stroke(); ctx.fill();
+      }
+      ctx.restore();
+    }
+  },
   /* はじけた 輪と とげ（togePop で 作ったものを 描く） */
   drawTogeFx(E, pixel){
     const ctx = E.ctx, tip = this.TOGE_TIP;
@@ -2951,6 +3542,34 @@ const SEESAW = {
       if(p.t === 'ring'){
         ctx.lineWidth = Math.max(4, p.r*0.22); ctx.strokeStyle = '#ffffff';
         ctx.beginPath(); ctx.arc(p.x, p.y, p.r*(1 + p.life/p.max*5), 0, Math.PI*2); ctx.stroke();
+      }else if(p.t === 'yolk'){
+        // 黄みが ひろがる（白身の 上に 黄色）。さいごの 0.4秒で うすくなる
+        ctx.globalAlpha = Math.min(1, (p.max - p.life) / 0.4);
+        const g2 = Math.min(1, p.life / 0.15), R = p.r * (0.8 + g2*0.7);
+        if(pixel){
+          const q = Math.max(2, Math.round(p.r*0.25));
+          ctx.fillStyle = '#f4f1e6'; ctx.fillRect(Math.round(p.x - R*1.4), Math.round(p.y - R*0.5), Math.round(R*2.8), Math.round(R));
+          ctx.fillStyle = '#f5b82e'; ctx.fillRect(Math.round(p.x - R*0.6), Math.round(p.y - R*0.6), Math.round(R*1.2), Math.round(R*1.0));
+          ctx.fillStyle = '#ffe08a'; ctx.fillRect(Math.round(p.x - R*0.4), Math.round(p.y - R*0.45), q, q);
+        }else{
+          ctx.fillStyle = '#f4f1e6';
+          ctx.beginPath(); ctx.ellipse(p.x, p.y, R*1.5, R*0.6, 0, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = '#f5b82e';
+          ctx.beginPath(); ctx.arc(p.x, p.y - R*0.1, R*0.6, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,.7)';
+          ctx.beginPath(); ctx.arc(p.x - R*0.22, p.y - R*0.3, R*0.15, 0, Math.PI*2); ctx.fill();
+        }
+      }else if(p.t === 'shell'){
+        // からの かけら（たまごの いろの 小さな 三角）
+        ctx.translate(Math.round(p.x), Math.round(p.y));
+        ctx.rotate(p.rot + p.vr*p.life);
+        const L = p.r*0.55;
+        ctx.fillStyle = p.col;
+        if(pixel){ ctx.fillRect(-L/2, -L/3, L, L*0.66); }
+        else{
+          ctx.beginPath(); ctx.moveTo(-L*0.5, -L*0.4); ctx.lineTo(L*0.55, -L*0.2); ctx.lineTo(-L*0.1, L*0.5); ctx.closePath();
+          ctx.fill(); ctx.lineWidth = Math.max(1.5, p.r*0.06); ctx.strokeStyle = 'rgba(60,60,70,.8)'; ctx.stroke();
+        }
       }else{
         ctx.translate(Math.round(p.x), Math.round(p.y));
         ctx.rotate(p.rot + p.vr*p.life);
@@ -3163,11 +3782,19 @@ const SEESAW = {
           ctx.fillStyle = i < on ? (p > 0.7 ? '#5bbd4a' : '#f5c542') : 'rgba(255,255,255,.28)';
           ctx.fillRect(bx + i*(sw+gap), by, sw, Math.max(4, Math.round(b.r*0.20)));
         }
-        ctx.fillStyle = b.onBeam ? '#f5c542' : '#ff9a95';
+        const cr = E.s.cross > 0 ? st.cross : null;
+        const waitCross = b.onBeam && cr && !b.crossOk;
+        const handWord = cr ? (cr.hand === 'left' ? 'ひだりて' : 'みぎて') : '';
+        const partWord = cr ? (cr.hand === 'left' ? 'みぎの ' : 'ひだりの ') + cr.part : '';
+        ctx.fillStyle = waitCross ? HAND_COL[cr.hand] : b.onBeam ? '#f5c542' : '#ff9a95';
         ctx.font = `${Math.round(E.H*0.03)}px ${E.font()}`;
         ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-        ctx.fillText(b.onBeam ? `あと ${Math.max(0, Math.ceil(need - b.hold))}` : 'シーソーの上で とめて',
-                     b.x, by - E.H*0.012);
+        ctx.lineWidth = Math.max(3, E.H*0.007); ctx.strokeStyle = 'rgba(10,10,14,.85)';
+        const msg = waitCross ? `${handWord}で ${partWord}に タッチ`
+                  : b.onBeam ? `あと ${Math.max(0, Math.ceil(need - b.hold))}` : 'シーソーの上で とめて';
+        ctx.strokeText(msg, b.x, by - E.H*0.012);
+        ctx.fillText(msg, b.x, by - E.H*0.012);
+        if(cr) this.drawCross(E, cr, now);
       }
     }
 
@@ -3176,7 +3803,7 @@ const SEESAW = {
 
     /* つぎのボールの予告 */
     if(st.phase === 'ready' && E.s.preview){
-      const nk = st.next, nToge = nk[0] === 's', kind = nToge ? nk[1] : nk;
+      const nk = st.next, nToge = nk[0] === 's', nEgg = nk[0] === 'e', kind = nToge || nEgg ? nk[1] : nk;
       const c = COL[kind], isBomb = kind === 'bomb';
       const pw = Math.min(E.W*0.40, g.cxR - g.cxL - g.bw - E.W*0.02);
       const ph = E.H*0.155;
@@ -3187,14 +3814,14 @@ const SEESAW = {
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = '#c8c8d2';
       ctx.font = `${Math.round(E.H*0.026)}px ${E.font()}`;
-      ctx.fillText(isBomb ? 'つぎは ばくだん' : nToge ? 'つぎは とげとげ' : 'つぎの ボール', E.W/2, py0 + ph*0.26);
+      ctx.fillText(isBomb ? 'つぎは ばくだん' : nToge ? 'つぎは とげとげ' : nEgg ? 'つぎは たまご' : 'つぎの ボール', E.W/2, py0 + ph*0.26);
       const r2 = ph*0.22;
-      this.drawBall(E, { kind, toge: nToge, spin: now/900 }, r2, px0 + pw*0.16, py0 + ph*0.66);
+      this.drawBall(E, { kind, toge: nToge, egg: nEgg, spin: nEgg ? 0 : now/900 }, r2, px0 + pw*0.16, py0 + ph*0.66);
       ctx.fillStyle = isBomb ? '#ff9a95' : c[1];
       ctx.font = `${Math.round(E.H*0.034)}px ${E.font()}`;
       ctx.textAlign = 'left';
       ctx.fillText(isBomb ? `シーソーの上で ${E.s.holdSec}びょう とめる`
-                          : (kind === 'A' ? 'あおの ' : 'あかの ') + (nToge ? 'かべへ' : 'かごへ'),
+                          : (kind === 'A' ? 'あおの ' : 'あかの ') + (nToge ? 'かべへ' : nEgg ? 'かごへ そっと' : 'かごへ'),
                    px0 + pw*0.29, py0 + ph*0.66);
       ctx.textAlign = 'center';
       ctx.fillStyle = '#f5c542';
@@ -3229,11 +3856,13 @@ const SEESAW = {
       }
     }
 
-    /* 基準が まだ取れていない子への あんない（失敗にはしない。カメラなしのお試しでは出さない） */
-    if(st.started && st.calib <= 0 && !E.cfg.__test){
+    /* 基準が まだ取れていない子への あんない（失敗にはしない。カメラなしのお試しでは出さない）。
+       じゅんびの あいだも、うつっていない がわには「カメラに うつってね」を 出す */
+    if(st.started && (st.calib <= 0 || st.prep > 0) && !E.cfg.__test){
       for(const side of ['A','B']){
         if(st.base[side] != null) continue;
         const seen = !!st.head[side] && E.poses.length > 0;
+        if(st.prep > 0 && seen) continue;      // じゅんび中に うつっている 子には まんなかの「まっすぐ たってね」だけ
         const msg = (side === 'A' ? 'あおの ひと　' : 'あかの ひと　')
                   + (seen ? 'まっすぐ たってね' : 'カメラに うつってね');
         const fs = Math.round(E.H*0.034);
@@ -3249,16 +3878,25 @@ const SEESAW = {
       }
     }
 
-    /* 基準を覚えている最中 */
-    if(st.calib > 0){
+    /* 基準を覚えている最中（じゅんび → 測る）。下の ゲージで あと どのくらいかが 分かる */
+    if(st.calib > 0 && st.started){
+      const prep = st.prep > 0;
+      const bw2 = E.W*0.5, bh2 = E.H*0.15, x0 = E.W/2-bw2/2, y0 = E.H*0.40;
       ctx.fillStyle = 'rgba(10,10,14,.8)';
-      const bw2 = E.W*0.5, bh2 = E.H*0.1;
-      ctx.fillRect(E.W/2-bw2/2, E.H*0.42, bw2, bh2);
-      E.pxRect(E.W/2-bw2/2, E.H*0.42, bw2, bh2, '#f5c542', 3);
-      ctx.fillStyle = '#f5c542';
-      ctx.font = `${Math.round(E.H*0.04)}px ${E.font()}`;
+      ctx.fillRect(x0, y0, bw2, bh2);
+      E.pxRect(x0, y0, bw2, bh2, '#f5c542', 3);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('まっすぐ たってね', E.W/2, E.H*0.42 + bh2/2);
+      ctx.fillStyle = '#f5c542';
+      ctx.font = `${Math.round(E.H*0.044)}px ${E.font()}`;
+      ctx.fillText('まっすぐ たってね', E.W/2, y0 + bh2*0.36);
+      ctx.fillStyle = '#e8ecf4';
+      ctx.font = `${Math.round(E.H*0.028)}px ${E.font()}`;
+      ctx.fillText(prep ? 'じゅんび して…' : 'そのまま うごかないでね', E.W/2, y0 + bh2*0.66);
+      const total = this.PREP + 1.0, done = total - Math.max(0, st.prep || 0) - Math.max(0, st.calib);
+      const gw = bw2*0.8, gh = Math.max(4, E.H*0.01), gx = E.W/2 - gw/2, gy = y0 + bh2*0.84;
+      ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(gx, gy, gw, gh);
+      ctx.fillStyle = prep ? '#f5c542' : '#8ce87a';
+      ctx.fillRect(gx, gy, gw * Math.max(0, Math.min(1, done/total)), gh);
     }
 
     /* 成否の表示 */
@@ -3279,6 +3917,531 @@ const SEESAW = {
   },
 };
 SEESAW.art();   // イラストの 絵を 起動時に 読みはじめる（テーマを 切りかえた ときに すぐ 出るように）
+
+/* ============================================================================
+   シーソーの 説明デモ（設定画面の「説明デモ」から。エンジンの G.mode='demo'）
+   活動の 前に 職員が 子どもに ルールを 説明する ときに 使う。カメラは 使わない。
+   両がわに 人形を 立たせ、台本どおりに しゃがむ・立つ・手を のばす。
+   物理・判定・演出は 本物の SEESAW を そのまま 使い、入力（st.dev ＝ 頭の 高さ）だけを 人形から 入れる
+   （SEESAW.dm が この オブジェクトの とき、SEESAW.tick は カメラではなく drive() を 呼ぶ）。
+   人形は ボールの 位置を 見ながら うごくので、ボールの 大きさ・傾き などの 設定を 変えても 場面が なりたつ。
+   左右の 入力は 人形ごとに 別なので、あとで 片がわだけ カメラ（職員の 実演）に する ことも できる。
+   場面（設定で「なし」の ものは とばす）：シーソー → いろの ボール → ばくだん → とげとげ → たまご → きょうの ルール。
+   1つの 場面は 6〜12秒。おわると すこし 待って くりかえし、職員が「つぎへ」で すすめる
+   ============================================================================ */
+const SEESAW_DEMO = {
+  PX: 0.10,                  // 人形の 立つ 位置（画面の はしから 幅の 割合）
+  SKIN:'#f3c9a2', PANTS:'#33405c', SHOE:'#1e2230', HAIR:'#3b2a22',
+  SHIRT: { A:['#3f6fc8','#8fb4ff'], B:['#c03c37','#ff9a95'] },
+  /* とげとげ：ボールが 支点から 板の 半分の 長さ × この 割合 まで 来たら 一気に 立つ。最大の傾きで よい 値が ちがう
+     （カメラなしの 計算で、ボールの 大きさ・反応・感度・とびやすさを 変えて とどいた 割合：
+       15度 0.8 で 約25%・25度 0.78 で 94%・35度 0.64 で 100%・45度 0.58 で 100%） */
+  FLICK: [[15, 0.80], [25, 0.78], [35, 0.64], [45, 0.58]],
+  flickAt(a){
+    const F = this.FLICK;
+    if(a <= F[0][0]) return F[0][1];
+    for(let i = 1; i < F.length; i++) if(a <= F[i][0]){
+      const [a0, f0] = F[i-1], [a1, f1] = F[i];
+      return f0 + (f1 - f0) * (a - a0) / (a1 - a0);
+    }
+    return F[F.length - 1][1];
+  },
+
+  /* ---------------- 進行 ---------------- */
+  start(E){
+    this.P = { A: this.mkPuppet('A'), B: this.mkPuppet('B') };
+    this.sig = JSON.stringify(E.s);
+    this.build(E);
+    this.enter(E, 0);
+  },
+  /* 設定から 見せる 場面を きめる（なしの ものは とばす。ぜんぶ なしなら ゲームと 同じく ボールを 出す） */
+  build(E){
+    const s = E.s, bombs = SEESAW.bombsOf(s), toge = s.toge || 0, egg = s.egg || 0;
+    let balls = s.balls ?? 2;
+    if(!balls && !bombs && !toge && !egg) balls = 2;
+    this.list = ['tilt'];
+    if(balls) this.list.push('balls');
+    if(bombs) this.list.push('bomb');
+    if(toge)  this.list.push('toge');
+    if(egg)   this.list.push('egg');
+    this.list.push('summary');
+  },
+  enter(E, i){
+    this.idx = Math.max(0, Math.min(this.list.length - 1, i));
+    this.restart(E);
+  },
+  restart(E){
+    SEESAW.reset(E);
+    SEESAW.dm = this;
+    this.pending = false; this.spawnReq = false; this.balance = false; this.handCol = false;
+    this.cap = ''; this.sub = '';
+    for(const t of ['A','B']){ const P = this.P[t]; P.hands = {left:null, right:null}; P.leanT = 0; P.cheer = 0; }
+    this.gen = this.SCN[this.list[this.idx]].call(this, E);
+  },
+  next(E){ if(this.idx < this.list.length - 1) this.enter(E, this.idx + 1); },
+  prev(E){ this.enter(E, this.idx > 0 ? this.idx - 1 : 0); },
+
+  tick(dt, E){
+    // 一時停止で 設定を 変えたら、見せる 場面を 組み直して 同じ 場面から やり直す
+    const sig = JSON.stringify(E.s);
+    if(sig !== this.sig){
+      const cur = this.list[this.idx];
+      this.sig = sig; this.build(E);
+      const i = this.list.indexOf(cur);
+      this.enter(E, i >= 0 ? i : Math.min(this.idx, this.list.length - 1));
+    }
+    if(this.pending) this.restart(E);      // 場面が おわったら くりかえす（SEESAW.tick の 外で 入れかえる）
+    SEESAW.tick(dt, E);
+  },
+
+  /* SEESAW.tick の 中から 毎フレーム 呼ばれる：台本を 1こま すすめ、人形を うごかし、頭の 高さを 入れる */
+  drive(dt, E, g){
+    const st = SEESAW.st;
+    if(this.gen && !this.pending){
+      const r = this.gen.next(dt);
+      if(r.done) this.pending = true;
+    }
+    if(st.phase === 'ready' && !this.spawnReq) st.wait = 99;   // 台本が 落とす ときだけ ボールを 出す
+
+    // ばくだんを 板の 上に とどめる ための 小さな かたむけ（ころがりだしたら 反対へ すこし）
+    let bal = 0;
+    const b = st.ball;
+    if(this.balance && b && b.onBeam){
+      const e = (b.x - g.pivotX) / g.half + b.vx / (E.H * 0.5);
+      bal = Math.abs(e) < 0.08 ? 0 : Math.max(-0.35, Math.min(0.35, e * 0.9));
+    }
+    for(const t of ['A','B']){
+      const P = this.P[t];
+      const add = t === 'A' ? Math.max(0, bal) : Math.max(0, -bal);   // ボールが 右なら 左が かがんで 右を 上げる
+      const tgt = Math.min(1, P.cT + add);
+      P.c += Math.max(-P.rate*dt, Math.min(P.rate*dt, tgt - P.c));
+      P.lean += Math.max(-1.6*dt, Math.min(1.6*dt, P.leanT - P.lean));
+      P.cheer = Math.max(0, P.cheer - dt);
+      const J = P.J = this.joints(P, E, dt);
+      st.dev[t] = J.dev;
+      st.head[t] = { x: J.head.x / E.W, y: J.head.y / E.H, torso: J.torso / E.H, lms: J.lms };
+    }
+  },
+
+  /* ---------------- 台本の 道具（ジェネレーター。yield で 1こま 待ち、dt が かえる） ---------------- */
+  *wait(sec){ let t = 0; while(t < sec) t += yield; },
+  *until(fn, max = 10){ let t = 0; while(!fn() && t < max) t += yield; },
+  set(side, c, rate){ const P = this.P[side]; P.cT = c; P.rate = rate; },
+  stand(rate = 2.5){ this.set('A', 0, rate); this.set('B', 0, rate); },
+  cheer(){ for(const t of ['A','B']) this.P[t].cheer = 1.1; },
+  clearBall(){ const st = SEESAW.st; st.ball = null; st.phase = 'ready'; st.tick = -1; },
+  /* ボールを 1こ 落として、板に のるまで 待つ */
+  *drop(kind){
+    const st = SEESAW.st;
+    if(st.ball) this.clearBall();
+    st.next = kind; st.phase = 'ready'; st.wait = 0.4; this.spawnReq = true;
+    yield* this.until(() => st.ball, 3);
+    this.spawnReq = false;
+    yield* this.until(() => !st.ball || st.ball.onBeam, 4);
+  },
+  done(){ const st = SEESAW.st; return st.okA + st.okB + st.defused + st.togeOk; },
+  /* たまごの ひびを デモの 中だけ 足す（説明の ための 誇張。ゲームの 判定は 変えない） */
+  crackMore(E, b, d){
+    const was = Math.floor(b.crack * 3);
+    b.crack += d; b.wob = 0.35;
+    if(b.crack >= 1) SEESAW.eggBreak(E, b);
+    else if(Math.floor(b.crack * 3) > was) E.floatText(b.x, b.y - b.r*2.2, 'そっと！', '#ffe08a');
+  },
+  /* たまごを ゆらす 場面：ゆらす ふかさ（傾きの 度数）・ゆらしはじめて この 秒数までは ゲームの 判定 だけ・この 秒数までに 割れる ように 足す */
+  JIGGLE_DEG: 13, JIGGLE_WAIT: 1.2, JIGGLE_SEC: 3.5, JIGGLE_END: 0.6,
+
+  /* ---------------- 場面 ---------------- */
+  SCN: {
+    *tilt(E){
+      this.cap = 'たって しゃがんで、シーソーを うごかそう';
+      this.stand(3);
+      this.sub = 'ふたりの あたまの たかさで うごくよ'; yield* this.wait(1.6);
+      this.sub = 'あおが しゃがむと…';  this.set('A', 1, 1.6); yield* this.wait(1.0);
+      this.sub = 'あおの ほうが さがる'; yield* this.wait(1.5);
+      this.set('A', 0, 1.6); yield* this.wait(0.8);
+      this.sub = 'あかが しゃがむと…';  this.set('B', 1, 1.6); yield* this.wait(1.0);
+      this.sub = 'あかの ほうが さがる'; yield* this.wait(1.5);
+      this.sub = 'ふたりとも たつと まっすぐ'; this.set('B', 0, 1.6); yield* this.wait(2.2);
+    },
+    *balls(E){
+      const st = SEESAW.st;
+      this.cap = 'おなじ いろの かごに いれよう';
+      for(const k of ['A','B']){
+        const o = k === 'A' ? 'B' : 'A', n0 = this.done();
+        this.sub = k === 'A' ? 'あおの ボールは あおの かごへ' : 'あかの ボールは あかの かごへ';
+        this.stand(3);
+        yield* this.drop(k);
+        yield* this.wait(0.3);
+        this.set(k, 1, 2.2); this.set(o, 0, 2.2);           // ボールの 色の がわが しゃがむ
+        yield* this.until(() => !st.ball, 8);
+        this.stand(2.5);
+        if(this.done() > n0) this.cheer();
+        yield* this.wait(1.3);
+      }
+      yield* this.wait(0.6);
+    },
+    *bomb(E){
+      const st = SEESAW.st, s = E.s, cross = s.cross || 0, n0 = this.done();
+      this.cap = 'ばくだんは シーソーの うえで とめよう';
+      this.stand(3);
+      this.sub = 'かごに いれちゃ だめ';
+      yield* this.drop('bomb');
+      this.balance = true;
+      yield* this.wait(0.6);
+      if(cross){
+        this.handCol = true;
+        const L = st.crossSide === 'L';                    // 'L'＝右手で 左の 肩・ひざ
+        const hand = L ? 'right' : 'left';
+        const idx = cross >= 2 ? (L ? 25 : 26) : (L ? 11 : 12);
+        this.sub = cross >= 2 ? 'ふたりで いっしょに かがんで…' : 'はんたいの てで…';
+        yield* this.wait(1.0);                               // さわるまでは 解除が すすまない ところを 見せる
+        if(cross >= 2){ for(const t of ['A','B']){ this.set(t, 0.55, 1.2); this.P[t].leanT = 1; } yield* this.wait(0.6); }
+        for(const t of ['A','B']) this.P[t].hands[hand] = idx;
+        this.sub = cross >= 2 ? 'はんたいの てで はんたいの ひざに タッチ' : 'はんたいの てで はんたいの かたに タッチ';
+      }else{
+        this.sub = `ふたりとも まっすぐ たって ${s.holdSec}びょう まつ`;
+      }
+      yield* this.until(() => !st.ball, s.holdSec + 8);
+      this.balance = false;
+      for(const t of ['A','B']){ this.P[t].hands = {left:null, right:null}; this.P[t].leanT = 0; }
+      this.stand(2.5);
+      if(this.done() > n0){ this.sub = 'かいじょ できた！'; this.cheer(); }
+      yield* this.wait(1.8);
+    },
+    *toge(E){
+      const st = SEESAW.st, g = SEESAW.geo(E);
+      this.cap = 'いっきに たって かべまで とばそう';
+      const flick = this.flickAt(E.s.maxAngle);
+      for(const k of ['A','B']){
+        const o = k === 'A' ? 'B' : 'A', sg = k === 'A' ? -1 : 1;
+        // とどかなかったら「おしい！ もういちど」で 3回まで（傾き 15度では 人形でも なかなか とどかない）
+        for(let tries = 0; tries < 3; tries++){
+          const n0 = this.done();
+          this.sub = tries ? 'おしい！ もういちど'
+                   : k === 'A' ? 'あおの とげとげは ひだりの かべへ' : 'あかの とげとげは みぎの かべへ';
+          this.stand(3);
+          yield* this.drop('s' + k);
+          yield* this.wait(0.4);
+          this.sub = 'しゃがんで ころがして…';
+          this.set(k, 1, 2.5); this.set(o, 0, 2.5);
+          yield* this.until(() => !st.ball || sg * (st.ball.x - g.pivotX) > g.half * flick, 4);
+          if(st.ball){
+            this.sub = 'いっきに たつ！';
+            this.set(k, 0, 10); this.set(o, 1, 10);         // しゃがんだ がわが 一気に 立ち、もう 1人が かがむ
+          }
+          yield* this.until(() => !st.ball, 5);
+          this.stand(2.5);
+          if(this.done() > n0){ this.sub = 'かべに とどいた！'; this.cheer(); yield* this.wait(1.5); break; }
+          this.clearBall();
+          yield* this.wait(1.0);
+        }
+      }
+    },
+    *egg(E){
+      const st = SEESAW.st, s = E.s;
+      this.cap = 'たまごは そっと はこぼう';
+      this.stand(3);
+      /* 1. いっぱいに しゃがんで 傾けすぎる → たまごが 速く 転がって ひびが 入り、割れる */
+      this.sub = 'かたむけすぎると…';
+      yield* this.drop('eA');
+      yield* this.wait(0.5);
+      const broke0 = st.eggBroke, tol = SEESAW.eggTol(s);
+      this.set('A', 1, 3); this.set('B', 0, 3);
+      let t = 0;
+      while(st.eggBroke === broke0 && st.ball && t < 8){
+        const dt = yield; t += dt;
+        const b = st.ball;
+        if(b && b.egg && b.crack > 0) this.sub = 'はやく ころがって ひびが…';
+        /* 最大の傾きが 小さい・止まりやすい 設定では いっぱいに 傾けても 割れる 速さに とどかない。
+           説明の ため、割れる 速さの 4割を こえて 転がって いれば ひびを 足す（デモだけの 誇張。ゲームの 判定は 変えない） */
+        if(b && b.egg && b.onBeam && SEESAW.eggSpeed(b, E) > tol * 0.4 && SEESAW.eggSpeed(b, E) <= tol) this.crackMore(E, b, dt * 1.2);
+      }
+      this.stand(3);
+      this.sub = st.eggBroke > broke0 ? 'われちゃった' : '';
+      if(st.ball) this.clearBall();
+      yield* this.wait(2.0);
+
+      /* 2. こまかく たったり しゃがんだり して ゆらす → たまごが ゆさぶられて ひびが 入り、割れる。
+         あおだけが 0.25秒ごとに しゃがむ・たつ を 入れかえる（ふかさは 傾きが 約13度に なる ところ。
+         ゆらさずに その ふかさで 止めれば ふつうの 設定では 割れずに かごへ 入る）。
+         ゲームの 判定でも ふつうの 設定なら 3秒 くらいで 割れるが、片がわだけで ゆらすと 平均では 傾いて いるので、
+         設定に よっては 割れる 前に かごへ 入る。説明の ため、おくれた ぶんの ひびを デモだけ 足す（ゲームの 判定は 変えない） */
+      this.sub = 'こまかく たったり しゃがんだり すると…';
+      yield* this.drop('eA');
+      yield* this.wait(0.5);
+      const broke1 = st.eggBroke, amp = Math.min(1, this.JIGGLE_DEG / (s.gain * s.maxAngle)), g = SEESAW.geo(E);
+      t = 0;
+      while(st.eggBroke === broke1 && st.ball && t < 8){
+        this.set('A', Math.floor(t / 0.25) % 2 ? amp : 0, 8);
+        const dt = yield; t += dt;
+        const b = st.ball;
+        if(!b || !b.egg) break;
+        if(t > 0.6) this.sub = b.crack > 0 ? 'ゆれて ひびが…' : 'ゆらゆら…';
+        /* ゲームの 判定で ひびが 入るのが「JIGGLE_SEC 秒で 割れる」ペースより おそい ときだけ、その おくれを デモの 中で 足す。
+           かごに 入って しまう 前に 割れるよう、支点から 板の 半分の JIGGLE_END まで 来たら 割れる ペースも 見る */
+        const far = Math.abs(b.x - g.pivotX) / g.half;
+        const due = Math.max((t - this.JIGGLE_WAIT) / (this.JIGGLE_SEC - this.JIGGLE_WAIT), (far - 0.25) / (this.JIGGLE_END - 0.25));
+        if((b.onBeam || b.offT < 0.3) && due > b.crack) this.crackMore(E, b, Math.min(due - b.crack, dt * 2));
+      }
+      this.stand(3);
+      this.sub = st.eggBroke > broke1 ? 'ゆらしても われちゃう' : '';
+      if(st.ball) this.clearBall();
+      yield* this.wait(2.0);
+
+      /* 3. すこしずつ しゃがんで、たまごが ゆっくり 転がる ところで とめる（速く なりかけたら すこし 立つ）。
+         姿勢を 調整しながら 傾ける ところを 見せる */
+      this.sub = 'すこしだけ かたむけて…';
+      yield* this.drop('eA');
+      yield* this.wait(0.4);
+      const ok0 = st.eggOk;
+      this.set('B', 0, 2);
+      // 板と ボールは 遅れて うごくので、いまの 速さ＋0.6秒 さきの 見こみで 決める
+      let c = 0, pv = 0; t = 0;
+      while(st.ball && t < 16){
+        const dt = yield; t += dt;
+        const b = st.ball;
+        if(!b || !b.egg) break;
+        const v = b.onBeam ? SEESAW.eggSpeed(b, E) : 0;
+        const ahead = v + Math.max(0, (v - pv) / Math.max(dt, 1e-3)) * 0.6; pv = v;
+        if(ahead > tol * 0.6){ c -= 1.0 * dt; this.sub = 'はやく なりそう…すこし たつ'; }
+        else if(ahead < tol * 0.4){ c += 0.3 * dt; if(t > 1.5) this.sub = 'ゆっくり ころがす'; }
+        c = Math.max(0, Math.min(1, c));
+        this.set('A', c, 3);
+      }
+      this.stand(2.5);
+      if(st.eggOk > ok0){ this.sub = 'そっと はこべた！'; this.cheer(); }
+      yield* this.wait(2.2);
+    },
+    *summary(E){
+      this.cap = 'きょうの ルール'; this.sub = '';
+      this.stand(2);
+      for(;;) yield;
+    },
+  },
+
+  /* ---------------- 人形の からだ ---------------- */
+  mkPuppet(side){
+    return { side, c:0, cT:0, rate:2, lean:0, leanT:0, cheer:0, hands:{left:null, right:null}, wr:{}, J:null };
+  },
+  /* 関節の 位置（px）。正面から 見た 形：しゃがむと ひざが すこし 外へ 出て、足が みじかく 見える。
+     まえかがみ（lean）は 肩が さがって 見える。頭の さがりかた ÷ 胴の長さ ＝ その人の dev（ゲームと 同じ 正規化） */
+  joints(P, E, dt){
+    const W = E.W, H = E.H, u = H * 0.105, gy = H * 0.955;
+    const x = P.side === 'A' ? W * this.PX : W * (1 - this.PX);
+    const torso = u * 1.7, leg = u * 1.5, armA = u * 1.15, armB = u * 1.05;
+    const ankY = gy - u * 0.12;
+    const hipY = ankY - leg * 2 * 0.985 + P.c * torso;
+    const shY  = hipY - torso + P.lean * u * 0.9;
+    const head = { x, y: shY - u * 0.78 }, hr = u * 0.5;
+    const head0 = ankY - leg * 2 * 0.985 - torso - u * 0.78;      // まっすぐ 立った ときの 頭
+    const J = { u, x, torso, head, hr, neckY: shY - u * 0.1, dev: (head0 - head.y) / torso };
+    for(const [k, sg] of [['l', -1], ['r', 1]]){
+      const ank = { x: x + sg * u * 0.42, y: ankY };
+      const hip = { x: x + sg * u * 0.36, y: hipY };
+      const d = Math.hypot(hip.x - ank.x, hip.y - ank.y);
+      const off = Math.sqrt(Math.max(0, leg*leg - d*d/4)) * 0.45;   // ひざは ほとんど 前へ 出る（正面からは 見えない）
+      const knee = { x: (hip.x + ank.x)/2 + sg * off, y: (hip.y + ank.y)/2 };
+      const sh = { x: x + sg * u * 0.68, y: shY };
+      J[k] = { ank, hip, knee, sh };
+    }
+    // 手：ふだんは 下ろす／よろこぶと ばんざい／タッチは 自分の からだの その 場所へ。なめらかに 追いかける
+    const PT = { 11: J.l.sh, 12: J.r.sh, 25: J.l.knee, 26: J.r.knee };
+    for(const [hand, k, sg] of [['left', 'l', -1], ['right', 'r', 1]]){
+      const sh = J[k].sh, tg = P.hands[hand];
+      const want = tg != null ? PT[tg]
+                 : P.cheer > 0 ? { x: sh.x + sg * u * 0.55, y: sh.y - u * 1.85 }
+                 : { x: sh.x + sg * u * 0.3, y: sh.y + u * 2.12 };
+      const w = P.wr[hand] || (P.wr[hand] = { x: want.x, y: want.y });
+      const kk = Math.min(1, dt * 9);
+      w.x += (want.x - w.x) * kk; w.y += (want.y - w.y) * kk;
+      J[k].wr = { x: w.x, y: w.y };
+      J[k].el = this.elbow(sh, w, armA, armB, sg);
+    }
+    // クロスタッチの 判定に つかう ランドマーク（ゲームと 同じ 形：x は 鏡うつし前、0〜1）
+    const lm = p => ({ x: 1 - p.x / W, y: p.y / H, visibility: 1 });
+    const lms = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, visibility: 0 }));
+    lms[0] = lm(head);
+    lms[11] = lm(J.l.sh);   lms[12] = lm(J.r.sh);
+    lms[13] = lm(J.l.el);   lms[14] = lm(J.r.el);
+    lms[15] = lm(J.l.wr);   lms[16] = lm(J.r.wr);
+    lms[23] = lm(J.l.hip);  lms[24] = lm(J.r.hip);
+    lms[25] = lm(J.l.knee); lms[26] = lm(J.r.knee);
+    lms[27] = lm(J.l.ank);  lms[28] = lm(J.r.ank);
+    J.lms = lms;
+    return J;
+  },
+  /* ひじ（2本の 骨。とどかない ときは すこし のばす）。外がわ・下がわに 曲がる ほうを えらぶ */
+  elbow(s, w, a, b, sg){
+    const dx = w.x - s.x, dy = w.y - s.y, d = Math.max(1, Math.hypot(dx, dy));
+    if(d > (a + b) * 0.999){ const k = d / ((a + b) * 0.999); a *= k; b *= k; }
+    const ang = Math.acos(Math.max(-1, Math.min(1, (a*a + d*d - b*b) / (2*a*d))));
+    const base = Math.atan2(dy, dx);
+    const c1 = { x: s.x + Math.cos(base + ang) * a, y: s.y + Math.sin(base + ang) * a };
+    const c2 = { x: s.x + Math.cos(base - ang) * a, y: s.y + Math.sin(base - ang) * a };
+    const score = c => (c.x - s.x) * sg + (c.y - s.y) * 0.6;
+    return score(c1) >= score(c2) ? c1 : c2;
+  },
+
+  /* ---------------- 描画 ---------------- */
+  render(now, E){
+    for(const t of ['A','B']) if(this.P[t].J) this.drawPuppet(E, this.P[t]);
+    SEESAW.render(now, E);
+    if(this.list[this.idx] === 'summary') this.drawSummary(E);
+    this.drawCaption(E);
+  },
+  /* 見た目ごとに 描き分ける。
+     くっきり：なめらかな 図形のまま／イラスト：こい ふちどり・ほっぺ・かみの 光（絵本ふう）／
+     ボクセル：小さな キャンバスに 描いて アルファを 2値化し、ドットの まま 拡大（とまれ の spr と 同じ やり方）。
+     かげも ドットの かたちで 右下に ずらして 置く（四角く ぬらない・README §7） */
+  _vox: {},
+  drawPuppet(E, P){
+    const ctx = E.ctx, J = P.J;
+    if(E.isPixel()){
+      const u = J.u, k = Math.max(3, Math.round(E.H * 0.0058));       // 1ドットの 大きさ（ボールの ドットと だいたい 同じ）
+      const bx = Math.floor((J.x - u * 2.6) / k) * k, by = Math.floor((J.head.y - u * 3.2) / k) * k;
+      const cw = Math.ceil(u * 5.2 / k), ch = Math.ceil((E.H - by) / k);
+      /* しゃがむと ch が 毎フレーム かわるので、キャンバスは 大きめに 1回 作って 使いまわし、左上の cw×ch だけ 使う。
+         毎フレーム 画素を 読みもどすので willReadFrequently（GPU からの 読みもどしで 重くならないように） */
+      let c = this._vox[P.side];
+      if(!c || c.width < cw || c.height < ch){
+        const W2 = Math.max(cw, c ? c.width : 0), H2 = Math.max(ch, c ? c.height : 0, Math.ceil(E.H / k));
+        c = this._vox[P.side] = document.createElement('canvas'); c.width = W2; c.height = H2;
+        c._q = c.getContext('2d', { willReadFrequently: true });
+        c._s = document.createElement('canvas'); c._s.width = W2; c._s.height = H2;
+      }
+      const q = c._q;
+      q.setTransform(1, 0, 0, 1, 0, 0); q.clearRect(0, 0, c.width, c.height);
+      q.setTransform(1/k, 0, 0, 1/k, -bx/k, -by/k);
+      this.paint(q, J, P, false);
+      q.setTransform(1, 0, 0, 1, 0, 0);
+      const im = q.getImageData(0, 0, cw, ch), a = im.data;
+      for(let i = 3; i < a.length; i += 4) a[i] = a[i] >= 110 ? 255 : 0;
+      q.putImageData(im, 0, 0);
+      const sq = c._s.getContext('2d');                              // かげ（同じ かたちを 黒く）
+      sq.globalCompositeOperation = 'copy'; sq.drawImage(c, 0, 0);
+      sq.globalCompositeOperation = 'source-in'; sq.fillStyle = '#000'; sq.fillRect(0, 0, c.width, c.height);
+      ctx.save(); ctx.imageSmoothingEnabled = false;
+      ctx.globalAlpha = 0.35; ctx.drawImage(c._s, 0, 0, cw, ch, bx + k, by + k, cw * k, ch * k);
+      ctx.globalAlpha = 1;    ctx.drawImage(c,    0, 0, cw, ch, bx,     by,     cw * k, ch * k);
+      ctx.restore();
+    }else{
+      ctx.save();
+      this.paint(ctx, J, P, E.theme().id === 'illust');
+      ctx.restore();
+    }
+    this.drawTag(E, P);
+  },
+  /* 人形 1人を g に 描く。ill＝イラスト（ふちどり・ほっぺ） */
+  paint(g, J, P, ill){
+    const u = J.u, sh = this.SHIRT[P.side], OL = '#241c2a', ol = ill ? Math.max(2, u * 0.08) : 0;
+    const handCol = hand => this.handCol ? HAND_COL[hand] : this.SKIN;
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    const line = (pts, w, c) => {
+      g.strokeStyle = c; g.lineWidth = w; g.beginPath();
+      pts.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)); g.stroke();
+    };
+    const dot = (p, r, c) => { g.fillStyle = c; g.beginPath(); g.arc(p.x, p.y, r, 0, Math.PI*2); g.fill(); };
+    for(const out of ill ? [true, false] : [false]){
+      const C = c => out ? OL : c, Wd = w => out ? w + ol*2 : w, R = r => out ? r + ol : r;
+      // あし・くつ
+      for(const k of ['l','r']) line([J[k].hip, J[k].knee, J[k].ank], Wd(u*0.40), C(this.PANTS));
+      for(const [k, sg] of [['l',-1],['r',1]]){
+        g.fillStyle = C(this.SHOE); g.beginPath();
+        g.ellipse(J[k].ank.x + sg*u*0.1, J[k].ank.y + u*0.02, R(u*0.27), R(u*0.14), 0, 0, Math.PI*2); g.fill();
+      }
+      // どう（シャツ）：角を まるく
+      g.fillStyle = C(sh[0]); g.strokeStyle = C(sh[0]); g.lineWidth = Wd(u*0.32);
+      g.beginPath(); g.moveTo(J.l.sh.x, J.l.sh.y); g.lineTo(J.r.sh.x, J.r.sh.y);
+      g.lineTo(J.r.hip.x + u*0.04, J.r.hip.y); g.lineTo(J.l.hip.x - u*0.04, J.l.hip.y); g.closePath();
+      g.fill(); g.stroke();
+      // くび・あたま
+      line([{ x: J.head.x, y: J.neckY }, J.head], Wd(u*0.28), C(this.SKIN));
+      dot(J.head, R(J.hr), C(this.SKIN));
+      // うで（そで → うで → 手）
+      for(const [k, hand] of [['l','left'],['r','right']]){
+        line([J[k].sh, J[k].el], Wd(u*0.30), C(sh[0]));
+        line([J[k].el, J[k].wr], Wd(u*0.23), C(this.SKIN));
+        dot(J[k].wr, R(u*0.17), C(handCol(hand)));
+      }
+    }
+    // かみ・かお
+    const hx = J.head.x, hy = J.head.y, r = J.hr;
+    g.fillStyle = this.HAIR; g.beginPath();
+    g.arc(hx, hy, r * 1.03, Math.PI, Math.PI * 2);
+    g.quadraticCurveTo(hx + r * 0.2, hy - r * 0.15, hx - r * 1.03, hy);
+    g.fill();
+    if(ill){ g.fillStyle = 'rgba(255,255,255,.28)'; g.beginPath(); g.ellipse(hx - r*0.35, hy - r*0.62, r*0.28, r*0.1, -0.5, 0, Math.PI*2); g.fill(); }
+    g.fillStyle = '#2a1e18';
+    for(const sx of [-1, 1]){ g.beginPath(); g.arc(hx + sx * r * 0.36, hy + r * 0.12, r * 0.11, 0, Math.PI*2); g.fill(); }
+    if(ill){
+      g.fillStyle = 'rgba(255,120,120,.45)';
+      for(const sx of [-1, 1]){ g.beginPath(); g.ellipse(hx + sx * r * 0.58, hy + r * 0.38, r * 0.17, r * 0.1, 0, 0, Math.PI*2); g.fill(); }
+    }
+    g.strokeStyle = '#7a3a2a'; g.lineWidth = Math.max(2, r * 0.09);
+    g.beginPath();
+    if(P.cheer > 0){ g.fillStyle = '#7a3a2a'; g.arc(hx, hy + r * 0.4, r * 0.2, 0, Math.PI); g.fill(); }
+    else { g.arc(hx, hy + r * 0.32, r * 0.22, 0.15 * Math.PI, 0.85 * Math.PI); g.stroke(); }
+  },
+  /* 頭の 上の 名札（ゲームの 頭マーカーと 同じ「あお／あか」） */
+  drawTag(E, P){
+    const ctx = E.ctx, J = P.J, c = this.SHIRT[P.side];
+    ctx.font = `${Math.round(E.H*0.032)}px ${E.font()}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.lineWidth = Math.max(3, E.H*0.008); ctx.strokeStyle = 'rgba(10,10,14,.85)';
+    const tag = P.side === 'A' ? 'あお' : 'あか', y = J.head.y - J.hr * 1.25;
+    ctx.strokeText(tag, J.head.x, y);
+    ctx.fillStyle = c[1]; ctx.fillText(tag, J.head.x, y);
+  },
+  /* 上の 説明（子どもが 見る。ひらがな） */
+  drawCaption(E){
+    if(!this.cap) return;
+    const ctx = E.ctx, W = E.W, H = E.H;
+    const fs = Math.round(H * 0.054), fs2 = Math.round(H * 0.036);
+    ctx.font = `${fs}px ${E.font()}`;  const w1 = ctx.measureText(this.cap).width;
+    ctx.font = `${fs2}px ${E.font()}`; const w2 = this.sub ? ctx.measureText(this.sub).width : 0;
+    const bw = Math.min(W * 0.8, Math.max(w1, w2) + fs * 2.2);
+    const bh = this.sub ? fs * 1.35 + fs2 * 1.7 : fs * 1.9;
+    const x0 = W/2 - bw/2, y0 = H * 0.04;
+    ctx.fillStyle = 'rgba(10,10,14,.9)'; ctx.fillRect(x0, y0, bw, bh);
+    E.pxRect(x0, y0, bw, bh, '#f5c542', 3);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `${fs}px ${E.font()}`; ctx.fillStyle = '#f5c542';
+    ctx.fillText(this.cap, W/2, y0 + fs * 0.95);
+    if(this.sub){ ctx.font = `${fs2}px ${E.font()}`; ctx.fillStyle = '#e8ecf4'; ctx.fillText(this.sub, W/2, y0 + fs * 1.35 + fs2 * 0.75); }
+    // 何番目の 場面か（職員の 目やす）
+    ctx.font = `${Math.round(H * 0.024)}px ${E.font()}`; ctx.fillStyle = '#9aa0ae';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(`${this.idx + 1} / ${this.list.length}`, x0, y0 + bh + H * 0.008);
+  },
+  /* さいごの まとめ（その日の 設定で 出る もの だけ） */
+  drawSummary(E){
+    const ctx = E.ctx, W = E.W, H = E.H, s = E.s;
+    const rows = [];
+    // [ボール, ことば, 小さい ことば]
+    if(this.list.includes('balls')) rows.push([[{kind:'A'}, {kind:'B'}], 'おなじ いろの かごへ いれる', '']);
+    if(this.list.includes('bomb'))  rows.push([[{kind:'bomb'}], `ばくだんは シーソーの うえで ${s.holdSec}びょう とめる`,
+                                      s.cross >= 2 ? 'はんたいの てで はんたいの ひざに タッチ' : s.cross ? 'はんたいの てで はんたいの かたに タッチ' : 'かごに いれない']);
+    if(this.list.includes('toge'))  rows.push([[{kind:'A', toge:true}], 'とげとげは じぶんの いろの かべへ', 'いっきに たって とばす']);
+    if(this.list.includes('egg'))   rows.push([[{kind:'A', egg:true}], 'たまごは そっと はこぶ', 'かたむけすぎたり ゆらしたり すると われる']);
+    const fs = Math.round(H * 0.038), fs2 = Math.round(H * 0.03), rh = H * 0.12;
+    const bw = W * 0.64, bh = rh * rows.length + H * 0.12;
+    const x0 = W/2 - bw/2, y0 = Math.max(H * 0.22, H * 0.56 - bh/2);
+    ctx.fillStyle = 'rgba(10,10,14,.92)'; ctx.fillRect(x0, y0, bw, bh);
+    E.pxRect(x0, y0, bw, bh, '#c8ccd6', 3);
+    rows.forEach(([balls, text, sub], i) => {
+      const cy = y0 + H * 0.03 + rh * (i + 0.5), r = H * 0.032;
+      balls.forEach((b, j) => SEESAW.drawBall(E, { spin: 0, crack: 0, ...b }, r, x0 + W * 0.05 + j * r * 2.4, cy));
+      const tx = x0 + W * 0.05 + r * 4.4;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.font = `${fs}px ${E.font()}`; ctx.fillStyle = '#f2f2f5';
+      ctx.fillText(text, tx, sub ? cy - fs2 * 0.6 : cy);
+      if(sub){ ctx.font = `${fs2}px ${E.font()}`; ctx.fillStyle = '#aab0c0'; ctx.fillText(sub, tx, cy + fs * 0.62); }
+    });
+    ctx.font = `${Math.round(H * 0.036)}px ${E.font()}`; ctx.fillStyle = '#8ce87a'; ctx.textAlign = 'center';
+    ctx.fillText('ふたりで ちからを あわせよう', W/2, y0 + bh - H * 0.05);
+  },
+};
+SEESAW.demo = SEESAW_DEMO;
 
 /* ============================================================================
    とまれ（だるまさんが ころんだ ＋ コインブロック）
@@ -3306,10 +4469,14 @@ SEESAW.art();   // イラストの 絵を 起動時に 読みはじめる（テ�
 const FREEZE_GAME = {
   id:'freeze',
   name:'とまれ',
+  teamScore: false,   // ふたりで あつめる ゲーム。ゲーム中の あお・あかの コインは 出さず、まんなかに「ふたりで コイン ○まい」
   tags:['抑制','姿勢保持','抗重力','身体図式'],
   desc:'おにが うしろを むいている あいだは ジャンプで 頭の上の ブロックを たたいて コインを あつめ、おにが ふりむいたら ぴたっと 止まります。ときどき 出る ポーズを まねすると ボーナス。だるまさんが ころんだ の あそびです。',
   modes:['vs'],
   custom:true,
+  /* BGM は 小さめ。「だるまさんが ころんだ」の 合図の 音（0.07）が 聞こえるように。
+     おにが ふりむいても BGM は 止めない（止めると「おにを 見るだけ」でも 耳で 分かって しまう） */
+  bgm:{ song:'genki', vol:0.5 },
 
   READY:1.2,
   SETTLE:0.35,        // 「とまれ」の あと、見のがす時間
@@ -3407,6 +4574,7 @@ const FREEZE_GAME = {
       res:{A:'', B:''}, flash:{A:0, B:0},
       ok:{A:0, B:0}, moved:{A:0, B:0}, combo:{A:0, B:0}, best:{A:0, B:0},
       hits:{A:0, B:0}, poses:{A:0, B:0},
+      earn:{ block:0, stop:0, pose:0 }, lost:0,   // コインを どこで とったか・見つかって 落とした まい数（結果の 行）
       slots:{A:[], B:[]}, coins:[], drops:[], pose:null, chantN:0,
       caughtBy:null, caughtT:0,
       _tp:null, _testUp:false,
@@ -3582,7 +4750,7 @@ const FREEZE_GAME = {
     sl.cool = this.HIT_COOL; sl.bump = 1; sl.used = 0.35;
     st.hits[team]++;
     st.coins.push({ x:sl.bx, y:sl.by - sl.B*0.5, r:sl.B*0.36, t:0 });
-    E.award(team, 1, 'good', sl.bx, sl.by - sl.B*1.3);
+    E.award(team, 1, 'good', sl.bx, sl.by - sl.B*1.3); st.earn.block++;
   },
 
   /* ---------------- 毎フレーム ---------------- */
@@ -3659,7 +4827,7 @@ const FREEZE_GAME = {
         }
         if(pz.prog[t] >= this.POSE_HOLD){
           pz.done[t] = true; st.poses[t]++;
-          E.award(t, this.POSE_PTS, 'bonus', card.x, card.y - card.h*0.2);
+          E.award(t, this.POSE_PTS, 'bonus', card.x, card.y - card.h*0.2); st.earn.pose += this.POSE_PTS;
           for(let k=0;k<this.POSE_PTS;k++)
             st.coins.push({ x:card.x + (k-1)*card.w*0.3, y:card.y - card.h*0.4, r:E.H*0.03, t:-k*0.08 });
         }
@@ -3720,8 +4888,8 @@ const FREEZE_GAME = {
         st.ok[t]++; st.combo[t]++; st.best[t] = Math.max(st.best[t], st.combo[t]);
         st.res[t] = 'ok';
         const x = t === 'A' ? E.W*0.25 : E.W*0.75;
-        E.award(t, 1, 'good', x, E.H*0.55);
-        if(st.combo[t] % 3 === 0) E.award(t, 1, 'bonus', x, E.H*0.47);
+        E.award(t, 1, 'good', x, E.H*0.55); st.earn.stop++;
+        if(st.combo[t] % 3 === 0){ E.award(t, 1, 'bonus', x, E.H*0.47); st.earn.stop++; }   // 3れんぞくごとの ボーナスも ぴたっの コイン
       }
       st.round++;
       st.phase = 'endcard'; st.t = 0;
@@ -3747,7 +4915,7 @@ const FREEZE_GAME = {
     const x = t === 'A' ? E.W*0.25 : E.W*0.75, y = E.H*0.5;
     const lose = Math.min(s.caught, Math.max(0, E.score[t]));
     if(lose > 0){
-      E.award(t, -lose, 'bad', x, y);
+      E.award(t, -lose, 'bad', x, y); st.lost += lose;
       for(let k=0;k<lose;k++)
         st.drops.push({ x, y, vx:(k - (lose-1)/2) * E.H*0.35 + (t === 'A' ? -1 : 1)*E.H*0.1,
                         vy:-E.H*0.9, r:E.H*0.03, t:0 });
@@ -4296,28 +5464,56 @@ const FREEZE_GAME = {
     }
   },
 
-  hudTotal(){
+  hudTotal(E){
     const st = this.st; if(!st) return '';
-    return `ぴたっ ${st.ok.A + st.ok.B}かい`;
+    const sc = E.score;
+    return `ふたりで コイン ${sc.A + sc.B}まい`;
   },
 
+  /* ---------------- 結果（あお・あか べつではなく、ふたりで 何まい。どこで とれたか） ----------------
+     合計は いま もっている コイン（「見つかったら 落とす」を 引いた あと）。その下に とれた ところごとの まい数と、
+     落とした ぶん（設定で 落とす ときだけ）。チームごとの 数・見つかった 回数は 職員用（「詳しい記録」） */
   result(E){
-    const st = this.st || { ok:{A:0,B:0}, moved:{A:0,B:0}, best:{A:0,B:0}, hits:{A:0,B:0}, poses:{A:0,B:0} };
-    const sc = E.score;
-    const coins = sc.A + sc.B, ok = st.ok.A + st.ok.B, best = Math.max(st.best.A, st.best.B);
-    const mv = st.moved.A + st.moved.B, pz = st.poses.A + st.poses.B;
-    const det = t => (E.s.hit > 0 ? `ブロック ${st.hits[t]}かい・` : '') + `ぴたっ ${st.ok[t]}かい`
-                     + (pz ? `・ポーズ ${st.poses[t]}かい` : '');
+    const st = this.st || {};
+    const z = { A:0, B:0 };
+    const ok = st.ok || z, moved = st.moved || z, best = st.best || z, hits = st.hits || z, poses = st.poses || z;
+    const earn = st.earn || { block:0, stop:0, pose:0 }, lost = st.lost || 0;
+    const sc = E.score, s = E.s;
+    const coins = sc.A + sc.B, okN = ok.A + ok.B, mv = moved.A + moved.B, bestN = Math.max(best.A, best.B);
+    const icon = (fn) => (c, w, h) => fn.call(FREEZE_GAME, c, w, h);
+    const rows = [];
+    if(s.hit > 0 || earn.block) rows.push({ label:'ブロック', value:earn.block, unit:'まい',
+      icon:icon(function(c, w, h){ this.drawBlock(c, w/2, h/2, h*0.62); }) });
+    rows.push({ label:'ぴたっ', value:earn.stop, unit:'まい',
+      icon:icon(function(c, w, h){ this.drawFigure(c, w/2, h/2, h*0.86, 'stand', '#5bbd4a'); }) });
+    if(s.poseBonus > 0 || earn.pose) rows.push({ label:'ポーズ', value:earn.pose, unit:'まい',
+      icon:icon(function(c, w, h){ this.drawFigure(c, w/2, h/2, h*0.86, 'banzai', '#f5c542'); }) });
+    // 「見つかったら 落とす」の 設定で 落とした ときだけ。合計と 行の 数を 合わせる ため（うすく 出す）
+    if(lost > 0) rows.push({ label:'みつかって おとした', value:'−' + lost, unit:'まい', dim:true,
+      icon:icon(function(c, w, h){ this.drawCoin(c, w/2, h/2, h*0.3, 0); }) });
+
+    const staff = [
+      ['ぴたっ', `あお ${ok.A}回・あか ${ok.B}回（いちばん続いた あお ${best.A}・あか ${best.B}）`],
+      ['見つかった', `あお ${moved.A}回・あか ${moved.B}回` + (lost ? `（落とした コイン ${lost}枚）` : '')],
+    ];
+    if(s.hit > 0 || earn.block) staff.push(['ブロック', `あお ${hits.A}回・あか ${hits.B}回`]);
+    if(s.poseBonus > 0 || earn.pose) staff.push(['ポーズ', `あお ${poses.A}回・あか ${poses.B}回`]);
+    staff.push(['止まれた割合', okN + mv ? `${Math.round(okN / (okN + mv) * 100)}%（ぴたっ ${okN}・見つかった ${mv}）` : '―']);
+
+    const record = [
+      ['合計（枚）', coins], ['ブロック（枚）', earn.block], ['ぴたっ（枚）', earn.stop], ['ポーズ（枚）', earn.pose], ['落とした（枚）', lost],
+      ['ぴたっ あお（回）', ok.A], ['ぴたっ あか（回）', ok.B],
+      ['見つかった あお（回）', moved.A], ['見つかった あか（回）', moved.B],
+      ['ブロック あお（回）', hits.A], ['ブロック あか（回）', hits.B],
+      ['ポーズ あお（回）', poses.A], ['ポーズ あか（回）', poses.B],
+      ['いちばん続いた あお（回）', best.A], ['いちばん続いた あか（回）', best.B],
+    ];
     return {
       title: coins > 0 ? `ふたりで コイン ${coins}まい！` : 'とまれ、ちょうせん しました',
       color: coins > 0 ? 'var(--gold)' : 'var(--ok)',
-      sub: best >= 3 ? `いちばん つづいた ぴたっは ${best}かい れんぞく`
-                     : (ok > 0 ? `ぴたっと とまれたのは ${ok}かい` : 'つぎも とまれるよ'),
-      cards: [
-        { label:E.cfg.nameA, value:sc.A, detail:det('A') },
-        { label:E.cfg.nameB, value:sc.B, detail:det('B') },
-      ],
-      line: `みつかった ${mv}かい` + (pz ? `　／　ポーズ できた ${pz}かい` : ''),
+      sub: bestN >= 3 ? `いちばん つづいた ぴたっは ${bestN}かい れんぞく`
+                      : (okN > 0 ? 'ふたりで ぴたっと とまれたね' : 'つぎも とまれるよ'),
+      rows, staff, record,
     };
   },
 };
@@ -4476,6 +5672,7 @@ function rebuildEnginePainters(){
   stepper('stepSwapEvery', [[30,'30秒'],[45,'45秒'],[60,'1分'],[90,'1分30秒']], ()=>CFG.swapEvery, v=>CFG.swapEvery=v);
   stepper('stepSwapPause', [[5,'5秒'],[10,'10秒'],[15,'15秒'],[20,'20秒']], ()=>CFG.swapPause, v=>CFG.swapPause=v);
   stepper('stepPeople', [[2,'2人'],[3,'3人'],[4,'4人']], ()=>CFG.maxPeople, v=>CFG.maxPeople=v);
+  stepper('stepBgm', [[0,'なし'],[1,'小さい'],[2,'ふつう']], ()=>CFG.bgm, v=>CFG.bgm=v);
   painters.push(() => {
     $('optSwap').checked = CFG.swap;
     $('optSwapAuto').checked = CFG.swapAuto;
@@ -4507,6 +5704,16 @@ $('btnStart').onclick = async () => {
   }
 };
 $('btnTest').onclick = () => { G.test = true; startGame(); };
+$('btnDemo').onclick = () => startDemo();
+$('btnDemoNext').onclick = () => demoStep(1);
+$('btnDemoPrev').onclick = () => demoStep(-1);
+/* プレゼン用の リモコン（→／PageDown／スペース）でも 進められる */
+window.addEventListener('keydown', e => {
+  if(G.mode !== 'demo' || G.paused) return;
+  if(['ArrowRight','PageDown',' ','Enter'].includes(e.key)){ e.preventDefault(); demoStep(1); }
+  else if(['ArrowLeft','PageUp'].includes(e.key)){ e.preventDefault(); demoStep(-1); }
+  else if(e.key === 'Escape'){ e.preventDefault(); endDemo(); }
+});
 $('bootBack').onclick = () => show('setup');
 $('btnBackToLauncher').onclick = () => show('launcher');
 $('btnSwapNow').onclick = () => beginSwap();
@@ -4516,6 +5723,7 @@ $('btnResume').onclick = () => { $('pause').classList.remove('on'); G.paused = f
 let quitArmed = 0;
 function disarmQuit(){ clearTimeout(quitArmed); quitArmed = 0; $('btnQuit').textContent = 'やめる'; $('btnQuit').classList.remove('armed'); }
 $('btnQuit').onclick = () => {
+  if(G.mode === 'demo'){ endDemo(); return; }   // デモは 失う 結果が ないので 1回で やめる
   if(!quitArmed){
     $('btnQuit').textContent = 'もういちど おすと やめます';
     $('btnQuit').classList.add('armed');
@@ -4527,6 +5735,13 @@ $('btnQuit').onclick = () => {
 $('btnAgain').onclick = () => { if(G.test || (landmarker && stream)) startGame(); else $('btnStart').click(); };
 $('btnBackSetup').onclick = () => { stopLoop(); show('setup'); };
 $('btnBackLauncher').onclick = () => { stopLoop(); show('launcher'); };
+$('btnStaff').onclick = () => {
+  const box = $('staffBox'), open = box.style.display === 'none';
+  box.style.display = open ? '' : 'none';
+  $('btnStaff').textContent = open ? '詳しい記録を とじる' : '詳しい記録';
+  if(open) box.scrollIntoView({ block:'nearest' });
+};
+$('btnSaveRec').onclick = saveRecord;
 window.addEventListener('resize', fitCanvas);
 
 /* ============================ 起動 ============================ */
@@ -4540,7 +5755,7 @@ show('launcher');
 window.__G = window.__gameState = G;
 window.__CFG = window.__cfg = CFG; window.__S = S;
 window.__testPointer = testPointer; window.__monsters = monsters; window.__SEE = SEESAW;
-window.__E = E; window.__G = G; window.__STAR = STAR_CATCH;   // カメラなしの自動確認用
+window.__E = E; window.__G = G; window.__STAR = STAR_CATCH; window.__BGM = BGM;   // カメラなしの自動確認用
 </script>
 </body>
 </html>
